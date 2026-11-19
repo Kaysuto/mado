@@ -4,6 +4,7 @@
 mod demo;
 mod github;
 mod ical;
+mod imap;
 mod linear;
 
 use crate::{error::Result, items::NewItem, secrets, settings};
@@ -25,6 +26,21 @@ pub trait Connector: Send + Sync {
     /// Fetches everything the source currently holds. What is no longer returned is removed
     /// locally; the user's triage of what remains is kept. Errors are worded for the user.
     async fn sync(&self) -> std::result::Result<Vec<NewItem>, String>;
+
+    /// Does something to an item in the source itself. Sources list what they can do in the
+    /// item's `meta.actions`; the others refuse.
+    async fn act(&self, _external_id: &str, _action: Action) -> std::result::Result<(), String> {
+        Err("This source cannot do that.".into())
+    }
+}
+
+/// What can be done to an item where it lives.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Action {
+    MarkRead,
+    /// Takes the item out of the inbox without deleting it.
+    Archive,
 }
 
 /// The services a source can be. Screens never look at this: they only see item kinds.
@@ -35,6 +51,8 @@ pub enum SourceKind {
     Github,
     /// A ticket tracker.
     Linear,
+    /// A mailbox, over IMAP. Its "token" is the password; `options` say where it is.
+    Imap,
     /// A calendar, read from its iCalendar feed. Its "token" is the feed's secret address.
     Ical,
 }
@@ -46,6 +64,9 @@ pub struct Source {
     pub id: String,
     pub kind: SourceKind,
     pub name: String,
+    /// What this kind of source needs besides its secret (a server, a user name…).
+    #[serde(default)]
+    pub options: serde_json::Value,
 }
 
 /// Name of a source's token in the keychain.
@@ -90,6 +111,10 @@ pub fn configured(conn: &Connection) -> Result<Vec<Box<dyn Connector>>> {
             SourceKind::Github => Box::new(github::Github::new(source.id, token)),
             SourceKind::Linear => Box::new(linear::Linear::new(source.id, token)),
             SourceKind::Ical => Box::new(ical::Ical::new(source.id, token)),
+            SourceKind::Imap => {
+                let options = serde_json::from_value(source.options).unwrap_or_default();
+                Box::new(imap::Imap::new(source.id, options, token))
+            }
         });
     }
     Ok(connectors)
@@ -136,6 +161,7 @@ mod tests {
             id: id.into(),
             kind: SourceKind::Linear,
             name: name.into(),
+            options: serde_json::Value::Null,
         };
         save_source(&conn, source("a", "Work")).unwrap();
         save_source(&conn, source("b", "Side project")).unwrap();

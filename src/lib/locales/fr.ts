@@ -33,6 +33,7 @@ export const fr: typeof en = {
     markDone: 'Fait',
     restore: 'Remettre',
     empty: 'Rien ici.',
+    untitled: '(sans objet)',
     noMatch: 'Rien ne correspond à cette recherche.',
     noSource: "Aucune source n'est encore connectée. Activez les données d'exemple pour découvrir l'application.",
     openSettings: 'Ouvrir les réglages',
@@ -44,6 +45,7 @@ export const fr: typeof en = {
     syncFailed: 'Synchronisation impossible',
   },
   open: 'Ouvrir',
+  actions: { mark_read: 'Marquer lu', archive: 'Archiver' },
   tasks: {
     add: 'Ajouter une tâche puis Entrée',
     empty: 'Aucune tâche pour le moment. Ajoutez-en une ci-dessus, ou connectez un outil de suivi dans les réglages.',
@@ -70,7 +72,10 @@ export const fr: typeof en = {
     confirmRemove: 'Confirmer le retrait',
     service: 'Service',
     name: 'Nom',
-    token: { github: 'Jeton (facultatif)', linear: 'Clé API', ical: 'Adresse iCal secrète' },
+    token: { github: 'Jeton (facultatif)', linear: 'Clé API', ical: 'Adresse iCal secrète', imap: "Mot de passe ou mot de passe d'application" },
+    server: 'Serveur de messagerie (IMAP)',
+    port: 'Port',
+    user: 'Adresse e-mail',
     add: 'Ajouter',
     sync: 'Synchroniser',
     hints: {
@@ -78,6 +83,7 @@ export const fr: typeof en = {
         "Laissez le jeton vide pour utiliser la connexion de l'outil GitHub CLI (gh), s'il est installé. Sinon, créez un jeton d'accès personnel qui peut lire vos dépôts et vos notifications.",
       linear: 'Créez une clé API personnelle dans Linear, dans Réglages, Sécurité et accès.',
       ical: "Tout service d'agenda peut donner une adresse iCal privée (dans Google Agenda : paramètres de l'agenda, « Adresse secrète au format iCal »). Quiconque la possède peut lire l'agenda : elle est donc rangée dans votre trousseau. Lecture seule.",
+      imap: "Fonctionne avec toute boîte qui propose IMAP. Gmail et iCloud demandent un mot de passe d'application : créez-le dans les réglages de sécurité de votre compte (la validation en deux étapes doit être activée). Outlook.com et Hotmail ne sont pas encore pris en charge. Madow lit les 14 derniers jours de la boîte de réception.",
     },
   },
   models: {

@@ -31,6 +31,7 @@ export const en = {
     markDone: 'Done',
     restore: 'Put back',
     empty: 'Nothing here.',
+    untitled: '(no subject)',
     noMatch: 'Nothing matches this search.',
     noSource: 'No source is connected yet. Turn on the sample data to look around.',
     openSettings: 'Open settings',
@@ -42,6 +43,7 @@ export const en = {
     syncFailed: 'Could not sync',
   },
   open: 'Open',
+  actions: { mark_read: 'Mark read', archive: 'Archive' },
   tasks: {
     add: 'Add a task and press Enter',
     empty: 'No task yet. Add one above, or connect a tracker in the settings.',
@@ -68,7 +70,10 @@ export const en = {
     confirmRemove: 'Confirm removal',
     service: 'Service',
     name: 'Name',
-    token: { github: 'Token (optional)', linear: 'API key', ical: 'Secret iCal address' },
+    token: { github: 'Token (optional)', linear: 'API key', ical: 'Secret iCal address', imap: 'Password or app password' },
+    server: 'Mail server (IMAP)',
+    port: 'Port',
+    user: 'E-mail address',
     add: 'Add',
     sync: 'Sync now',
     hints: {
@@ -76,6 +81,7 @@ export const en = {
         'Leave the token empty to use the sign-in of the GitHub CLI (gh), if it is installed. Otherwise create a personal access token that can read your repositories and notifications.',
       linear: 'Create a personal API key in Linear, under Settings, Security & access.',
       ical: 'Every calendar service can give a private iCal address (in Google Calendar: settings of the calendar, "Secret address in iCal format"). Anyone who has it can read the calendar, so it is kept in your keychain. Reading only.',
+      imap: 'Works with any mailbox that offers IMAP. Gmail and iCloud need an app password: create one in the security settings of your account (two-step verification must be on). Outlook.com and Hotmail are not supported yet. Madow reads the last 14 days of the inbox.',
     },
   },
   models: {

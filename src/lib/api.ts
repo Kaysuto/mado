@@ -70,14 +70,22 @@ export function openPage(url: string | null) {
   if (url && /^https:\/\/\S+$/.test(url)) void openUrl(url)
 }
 
+/** What a source can do to one of its items. Each item lists its own in `meta.actions`. */
+export const ITEM_ACTIONS = ['mark_read', 'archive'] as const
+export type ItemAction = (typeof ITEM_ACTIONS)[number]
+
+export const actOnItem = (id: number, action: ItemAction) => invoke<void>('act_on_item', { id, action })
+
 // ---------- sources (types mirror `src-tauri/src/connectors/mod.rs`) ----------
 
-export type SourceKind = 'github' | 'linear' | 'ical'
+export type SourceKind = 'github' | 'linear' | 'ical' | 'imap'
 
 export interface Source {
   id: string
   kind: SourceKind
   name: string
+  /** What this kind of source needs besides its secret (a mail server, a user name…). */
+  options: Record<string, unknown>
 }
 
 /** A source as stored. The token itself never leaves the core. */

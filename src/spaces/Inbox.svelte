@@ -2,6 +2,9 @@
   import { onMount } from 'svelte'
   import {
     INBOX_KINDS,
+    ITEM_ACTIONS,
+    type ItemAction,
+    actOnItem,
     type Item,
     type Triage,
     listItems,
@@ -21,6 +24,24 @@
   let items = $state<Item[]>([])
   let error = $state('')
   let hasSource = $state(true)
+  let actionError = $state('')
+  let acting = $state<number | null>(null)
+
+  /** What the item's own source says it can do to it. */
+  const actionsOf = (item: Item) =>
+    ITEM_ACTIONS.filter(action => Array.isArray(item.meta.actions) && item.meta.actions.includes(action))
+
+  async function act(item: Item, action: ItemAction) {
+    acting = item.id
+    try {
+      await actOnItem(item.id, action)
+      actionError = ''
+    } catch (cause) {
+      actionError = String(cause)
+    } finally {
+      acting = null
+    }
+  }
   let now = $state(Date.now() / 1000)
 
   let latest = 0
@@ -73,6 +94,10 @@
   {/each}
 </div>
 
+{#if actionError}
+  <p class="error" role="alert">{actionError}</p>
+{/if}
+
 {#if error}
   <p class="error" role="alert">{error}</p>
 {:else if items.length === 0}
@@ -97,12 +122,17 @@
               {[item.author, relativeTime(item.occurredAt, now, i18n.locale)].filter(Boolean).join(' · ')}
             </span>
           </div>
-          <div class="title">{item.title}</div>
+          <div class="title" class:read={item.state === 'read'}>{item.title || i18n.t.inbox.untitled}</div>
           {#if item.body}<div class="body">{item.body}</div>{/if}
         </div>
         {#if item.url}
           <button class="btn" onclick={() => openPage(item.url)}>{i18n.t.open}</button>
         {/if}
+        {#each actionsOf(item) as action (action)}
+          <button class="btn" disabled={acting === item.id} onclick={() => act(item, action)}>
+            {i18n.t.actions[action]}
+          </button>
+        {/each}
         <button class="btn" onclick={() => setTriage(item.id, triage === 'inbox' ? 'done' : 'inbox')}>
           {triage === 'inbox' ? i18n.t.inbox.markDone : i18n.t.inbox.restore}
         </button>
@@ -169,6 +199,13 @@
   }
   .title {
     font-weight: 600;
+  }
+  .title.read {
+    font-weight: 400;
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
   .body {
     overflow: hidden;
