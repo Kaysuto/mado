@@ -1,7 +1,12 @@
 node_modules/
 dist/
 target/
-.DS_Store
+src-tauri/gen/
 *.log
+*.local
 .env
 .env.*
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,19 @@
+[package]
+name = "mado"
+version = "0.0.0"
+description = "The all-in-one workspace for developers, with the AI model of your choice"
+authors = ["Kaysuto"]
+license = "MIT"
+repository = "https://github.com/Kaysuto/mado"
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "mado_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.5" }
+
+[dependencies]
+tauri = { version = "2.12.6" }
