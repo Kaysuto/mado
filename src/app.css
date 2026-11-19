@@ -1,0 +1,41 @@
+/* Design tokens. Every colour used by a component comes from here. */
+:root {
+  --bg: #0e0e10;
+  --surface: #141416;
+  --border: rgba(255, 255, 255, 0.08);
+  --hover: rgba(255, 255, 255, 0.05);
+  --text: #f4f4f5;
+  --muted: rgba(244, 244, 245, 0.6);
+  --accent: #9ec8d5;
+  --accent-soft: rgba(158, 200, 213, 0.16);
+  color-scheme: dark;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

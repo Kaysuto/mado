@@ -8,6 +8,19 @@ En cours de construction : la première version utilisable n'est pas encore sort
 
 [English version](README.md)
 
+## Développement
+
+Prérequis : [Rust](https://rustup.rs), Node.js 24, [pnpm](https://pnpm.io) et les [dépendances système de Tauri](https://tauri.app/start/prerequisites/) pour votre plateforme.
+
+```sh
+pnpm install
+pnpm tauri dev    # lance l'application avec rechargement à chaud
+pnpm check        # vérifie les types de l'interface
+pnpm test         # tests unitaires
+```
+
+L'interface est dans `src/` (Svelte 5 + TypeScript) et le cœur dans `src-tauri/` (Rust).
+
 ## Licence
 
 [MIT](LICENSE)
