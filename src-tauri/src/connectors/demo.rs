@@ -125,7 +125,11 @@ impl Connector for Demo {
                     state: state.into(),
                     occurred_at,
                     ends_at: duration.map(|d: i64| occurred_at + d),
-                    meta: json!({}),
+                    // Trackers say how far along a ticket is; the Tasks space groups by it.
+                    meta: match kind {
+                        Kind::Ticket => json!({ "identifier": "APP-77", "stateType": "started" }),
+                        _ => json!({}),
+                    },
                 }
             })
             .collect())

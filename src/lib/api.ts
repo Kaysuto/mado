@@ -1,6 +1,7 @@
 // The only door between the interface and the Rust core. Types mirror `src-tauri/src/items.rs`.
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { openUrl } from '@tauri-apps/plugin-opener'
 
 export type Kind =
   | 'mail'
@@ -53,6 +54,40 @@ export const setTriage = (id: number, triage: Triage) => invoke<void>('set_triag
 export const getSetting = <T>(key: string) => invoke<T | null>('get_setting', { key })
 export const setSetting = (key: string, value: unknown) => invoke<void>('set_setting', { key, value })
 export const syncNow = () => invoke<SyncFailure[]>('sync_now')
+
+/** What arrives from outside and waits for a decision. Tasks, notes, events and articles have their own spaces. */
+export const INBOX_KINDS: Kind[] = ['mail', 'merge_request', 'notification', 'ticket', 'message', 'alert']
+
+export const createTask = (title: string) => invoke<void>('create_task', { title })
+export const setTaskDone = (id: number, done: boolean) => invoke<void>('set_task_done', { id, done })
+export const deleteTask = (id: number) => invoke<void>('delete_task', { id })
+
+/** Opens a web page in the browser. Anything that is not an https address is ignored. */
+export function openPage(url: string | null) {
+  if (url && /^https:\/\/\S+$/.test(url)) void openUrl(url)
+}
+
+// ---------- sources (types mirror `src-tauri/src/connectors/mod.rs`) ----------
+
+export type SourceKind = 'github' | 'linear'
+
+export interface Source {
+  id: string
+  kind: SourceKind
+  name: string
+}
+
+/** A source as stored. The token itself never leaves the core. */
+export interface SourceView extends Source {
+  hasToken: boolean
+  /** Why its last sync failed, if it did. */
+  error: string | null
+}
+
+export const listSources = () => invoke<SourceView[]>('list_sources')
+/** `token` replaces the stored one; leaving it out keeps the current one. */
+export const saveSource = (source: Source, token?: string) => invoke<void>('save_source', { source, token })
+export const deleteSource = (id: string) => invoke<void>('delete_source', { id })
 
 // ---------- models (types mirror `src-tauri/src/llm/mod.rs`) ----------
 

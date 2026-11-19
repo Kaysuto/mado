@@ -1,6 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { type Item, type Triage, getSetting, listItems, onItemsChanged, setTriage } from '../lib/api'
+  import {
+    INBOX_KINDS,
+    type Item,
+    type Triage,
+    listItems,
+    listSources,
+    getSetting,
+    onItemsChanged,
+    openPage,
+    setTriage,
+  } from '../lib/api'
   import { i18n } from '../lib/i18n.svelte'
   import { relativeTime } from '../lib/time'
 
@@ -17,13 +27,13 @@
   async function load() {
     const request = ++latest
     try {
-      const found = await listItems({ triage, search })
+      const found = await listItems({ kinds: INBOX_KINDS, triage, search })
       // A slower, older answer must not replace a newer one.
       if (request !== latest) return
       items = found
       error = ''
-      // The sample data is the only source for now.
-      hasSource = found.length > 0 || (await getSetting<boolean>('demo')) === true
+      hasSource =
+        found.length > 0 || (await getSetting<boolean>('demo')) === true || (await listSources()).length > 0
     } catch (cause) {
       if (request === latest) error = String(cause)
     }
@@ -90,6 +100,9 @@
           <div class="title">{item.title}</div>
           {#if item.body}<div class="body">{item.body}</div>{/if}
         </div>
+        {#if item.url}
+          <button class="btn" onclick={() => openPage(item.url)}>{i18n.t.open}</button>
+        {/if}
         <button class="btn" onclick={() => setTriage(item.id, triage === 'inbox' ? 'done' : 'inbox')}>
           {triage === 'inbox' ? i18n.t.inbox.markDone : i18n.t.inbox.restore}
         </button>

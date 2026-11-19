@@ -6,10 +6,10 @@ mod anthropic;
 mod cli;
 mod openai_compat;
 
-use crate::{error::Result, settings};
+use crate::{error::Result, http::client, settings};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use std::{path::Path, sync::OnceLock, time::Duration};
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -71,16 +71,6 @@ pub struct Reply {
 
 /// Failures here are already worded for the user.
 type Outcome<T> = std::result::Result<T, String>;
-
-fn client() -> &'static reqwest::Client {
-    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    CLIENT.get_or_init(|| {
-        reqwest::Client::builder()
-            .connect_timeout(Duration::from_secs(10))
-            .build()
-            .unwrap_or_default()
-    })
-}
 
 /// Sends the conversation and waits for the whole answer. The caller sets the time limit.
 /// `workdir` is an empty folder for the command-line tools to run in.

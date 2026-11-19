@@ -168,6 +168,36 @@ pub fn retain_sources(conn: &Connection, sources: &[&str]) -> Result<()> {
     Ok(())
 }
 
+/// Creates something of the user's own (a task, a note). It starts out of the inbox: nobody
+/// has to be told about what they just wrote themselves.
+pub fn create_local(conn: &Connection, kind: Kind, title: &str) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO items (source, external_id, kind, title, state, triage, occurred_at, synced_at)
+         VALUES (?1, lower(hex(randomblob(8))), ?2, ?3, 'todo', 'done', ?4, 0)",
+        params![LOCAL_SOURCE, kind, title, now()],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+/// Changes the state of one of the user's own items. Items of a source are left alone:
+/// their state belongs to the source.
+pub fn set_local_state(conn: &Connection, id: i64, state: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE items SET state = ?3 WHERE id = ?1 AND source = ?2",
+        params![id, LOCAL_SOURCE, state],
+    )?;
+    Ok(())
+}
+
+/// Deletes one of the user's own items. Items of a source cannot be deleted from here.
+pub fn delete_local(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute(
+        "DELETE FROM items WHERE id = ?1 AND source = ?2",
+        params![id, LOCAL_SOURCE],
+    )?;
+    Ok(())
+}
+
 pub fn set_triage(conn: &Connection, id: i64, triage: Triage) -> Result<()> {
     conn.execute(
         "UPDATE items SET triage = ?2 WHERE id = ?1",
@@ -342,6 +372,35 @@ mod tests {
         replace_source(&mut conn, LOCAL_SOURCE, &[item("1", Kind::Task, "Mine", 3)]).unwrap();
         retain_sources(&conn, &["kept"]).unwrap();
         assert_eq!(titles(&conn, Query::default()), ["Mine", "Kept"]);
+    }
+
+    #[test]
+    fn local_items_stay_out_of_the_inbox_and_can_be_finished_and_deleted() {
+        let mut conn = open_in_memory();
+        replace_source(&mut conn, "a", &[item("1", Kind::Mail, "Mail", 1)]).unwrap();
+        let mail = list(&conn, &Query::default()).unwrap().pop().unwrap();
+        let task = create_local(&conn, Kind::Task, "Call the bank").unwrap();
+
+        let inbox = Query {
+            triage: Some(Triage::Inbox),
+            ..Query::default()
+        };
+        assert_eq!(titles(&conn, inbox), ["Mail"]);
+
+        set_local_state(&conn, task, "done").unwrap();
+        // The state of a source's item is not ours to change, nor the item ours to delete.
+        set_local_state(&conn, mail.id, "done").unwrap();
+        delete_local(&conn, mail.id).unwrap();
+        let states: Vec<_> = list(&conn, &Query::default())
+            .unwrap()
+            .into_iter()
+            .map(|i| (i.title, i.state))
+            .collect();
+        assert!(states.contains(&("Call the bank".into(), "done".into())));
+        assert!(states.contains(&("Mail".into(), String::new())));
+
+        delete_local(&conn, task).unwrap();
+        assert_eq!(titles(&conn, Query::default()), ["Mail"]);
     }
 
     #[test]

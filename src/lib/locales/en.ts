@@ -41,6 +41,32 @@ export const en = {
     demoHint: 'Fills the app with made-up items, to try it without connecting any account.',
     syncFailed: 'Could not sync',
   },
+  open: 'Open',
+  tasks: {
+    add: 'Add a task and press Enter',
+    empty: 'No task yet. Add one above, or connect a tracker in the settings.',
+    finish: 'Mark as finished',
+    due: 'due',
+    delete: 'Delete',
+    groups: { doing: 'In progress', todo: 'To do', done: 'Finished' },
+  },
+  sources: {
+    title: 'Sources',
+    intro: 'Connect the services your work lives in. Madow reads them itself; the AI model never gets access to them.',
+    none: 'No source yet. Add one below.',
+    remove: 'Remove',
+    confirmRemove: 'Confirm removal',
+    service: 'Service',
+    name: 'Name',
+    token: { github: 'Token (optional)', linear: 'API key' },
+    add: 'Add',
+    sync: 'Sync now',
+    hints: {
+      github:
+        'Leave the token empty to use the sign-in of the GitHub CLI (gh), if it is installed. Otherwise create a personal access token that can read your repositories and notifications.',
+      linear: 'Create a personal API key in Linear, under Settings, Security & access.',
+    },
+  },
   models: {
     title: 'Models',
     intro:
