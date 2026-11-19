@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Mado",
+  "productName": "Madow",
   "version": "0.0.0",
-  "identifier": "fr.kaysuto.mado",
+  "identifier": "fr.kaysuto.madow",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Mado",
+        "title": "Madow",
         "width": 1280,
         "height": 800,
         "minWidth": 900,
