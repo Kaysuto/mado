@@ -43,6 +43,32 @@ export const fr: typeof en = {
     demoHint: "Remplit l'application d'éléments fictifs, pour l'essayer sans connecter de compte.",
     syncFailed: 'Synchronisation impossible',
   },
+  open: 'Ouvrir',
+  tasks: {
+    add: 'Ajouter une tâche puis Entrée',
+    empty: 'Aucune tâche pour le moment. Ajoutez-en une ci-dessus, ou connectez un outil de suivi dans les réglages.',
+    finish: 'Marquer comme terminée',
+    due: 'échéance',
+    delete: 'Supprimer',
+    groups: { doing: 'En cours', todo: 'À faire', done: 'Terminées' },
+  },
+  sources: {
+    title: 'Sources',
+    intro: "Connectez les services où se trouve votre travail. Madow les lit elle-même ; le modèle d'IA n'y a jamais accès.",
+    none: 'Aucune source pour le moment. Ajoutez-en une ci-dessous.',
+    remove: 'Retirer',
+    confirmRemove: 'Confirmer le retrait',
+    service: 'Service',
+    name: 'Nom',
+    token: { github: 'Jeton (facultatif)', linear: 'Clé API' },
+    add: 'Ajouter',
+    sync: 'Synchroniser',
+    hints: {
+      github:
+        "Laissez le jeton vide pour utiliser la connexion de l'outil GitHub CLI (gh), s'il est installé. Sinon, créez un jeton d'accès personnel qui peut lire vos dépôts et vos notifications.",
+      linear: 'Créez une clé API personnelle dans Linear, dans Réglages, Sécurité et accès.',
+    },
+  },
   models: {
     title: 'Modèles',
     intro:

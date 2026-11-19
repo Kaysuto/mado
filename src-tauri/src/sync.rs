@@ -35,6 +35,11 @@ pub async fn run(app: &AppHandle) -> Result<Vec<Failure>> {
             }),
         }
     }
+    // Remembered so the settings can show which source is in trouble, and why.
+    *state.sync_errors() = failures
+        .iter()
+        .map(|failure| (failure.source.clone(), failure.message.clone()))
+        .collect();
     app.emit(ITEMS_CHANGED, ())?;
     Ok(failures)
 }

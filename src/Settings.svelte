@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Models from './Models.svelte'
+  import Sources from './Sources.svelte'
   import { type SyncFailure, getSetting, setSetting, syncNow } from './lib/api'
   import { i18n } from './lib/i18n.svelte'
   import { LOCALES } from './lib/locale'
@@ -50,6 +51,7 @@
   <p class="error" role="alert">{i18n.t.prefs.syncFailed} ({failure.source}) : {failure.message}</p>
 {/each}
 
+<Sources />
 <Models />
 
 <style>

@@ -5,6 +5,7 @@
   import { i18n, restoreLocale } from './lib/i18n.svelte'
   import { SPACES, type Space } from './lib/spaces'
   import Inbox from './spaces/Inbox.svelte'
+  import Tasks from './spaces/Tasks.svelte'
 
   type View = Space | 'settings'
   const VIEWS: readonly View[] = [...SPACES, 'settings']
@@ -70,6 +71,8 @@
   <main>
     {#if view === 'inbox'}
       <Inbox onsettings={() => show('settings')} />
+    {:else if view === 'tasks'}
+      <Tasks />
     {:else if view === 'settings'}
       <Settings />
     {:else}

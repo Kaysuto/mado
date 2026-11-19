@@ -1,6 +1,7 @@
 mod connectors;
 mod db;
 mod error;
+mod http;
 mod items;
 mod llm;
 mod secrets;
@@ -28,12 +29,20 @@ pub struct State {
     db: Mutex<Connection>,
     /// Model calls in progress, by the id the interface gave them, so they can be cancelled.
     running: Mutex<HashMap<String, oneshot::Sender<()>>>,
+    /// Why each source failed at the last sync. A source that is not listed is fine.
+    sync_errors: Mutex<HashMap<String, String>>,
 }
 
 impl State {
     fn db(&self) -> MutexGuard<'_, Connection> {
         // A poisoned lock means a command panicked mid-query; the connection itself is still valid.
         self.db
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    fn sync_errors(&self) -> MutexGuard<'_, HashMap<String, String>> {
+        self.sync_errors
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
@@ -62,6 +71,83 @@ fn set_triage(app: AppHandle, id: i64, triage: items::Triage) -> Result<()> {
 #[tauri::command]
 async fn sync_now(app: AppHandle) -> Result<Vec<sync::Failure>> {
     sync::run(&app).await
+}
+
+#[tauri::command]
+fn create_task(app: AppHandle, title: &str) -> Result<()> {
+    let title = title.trim();
+    if title.is_empty() {
+        return Err(Error::Message("A task needs a title.".into()));
+    }
+    items::create_local(&app.state::<State>().db(), items::Kind::Task, title)?;
+    app.emit(sync::ITEMS_CHANGED, ())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn set_task_done(app: AppHandle, id: i64, done: bool) -> Result<()> {
+    let state = if done { "done" } else { "todo" };
+    items::set_local_state(&app.state::<State>().db(), id, state)?;
+    app.emit(sync::ITEMS_CHANGED, ())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_task(app: AppHandle, id: i64) -> Result<()> {
+    items::delete_local(&app.state::<State>().db(), id)?;
+    app.emit(sync::ITEMS_CHANGED, ())?;
+    Ok(())
+}
+
+// ---------- sources ----------
+
+/// A source as the interface sees it: never its token, only whether it has one.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SourceView {
+    #[serde(flatten)]
+    source: connectors::Source,
+    has_token: bool,
+    /// Why the last sync of this source failed, if it did.
+    error: Option<String>,
+}
+
+#[tauri::command]
+fn list_sources(state: tauri::State<'_, State>) -> Result<Vec<SourceView>> {
+    let errors = state.sync_errors().clone();
+    connectors::sources(&state.db())?
+        .into_iter()
+        .map(|source| {
+            Ok(SourceView {
+                has_token: secrets::get(&connectors::secret_name(&source.id))?.is_some(),
+                error: errors.get(&source.id).cloned(),
+                source,
+            })
+        })
+        .collect()
+}
+
+/// Saves a source. `token` replaces its token when given; leaving it out keeps the stored one.
+#[tauri::command]
+fn save_source(
+    state: tauri::State<'_, State>,
+    source: connectors::Source,
+    token: Option<String>,
+) -> Result<()> {
+    if source.id.trim().is_empty() || source.name.trim().is_empty() {
+        return Err(Error::Message("A source needs a name.".into()));
+    }
+    if let Some(token) = token.filter(|token| !token.trim().is_empty()) {
+        secrets::set(&connectors::secret_name(&source.id), token.trim())?;
+    }
+    connectors::save_source(&state.db(), source)
+}
+
+/// Forgets a source and its token. Its items go at the next sync.
+#[tauri::command]
+fn delete_source(state: tauri::State<'_, State>, id: &str) -> Result<()> {
+    secrets::delete(&connectors::secret_name(id))?;
+    connectors::delete_source(&state.db(), id)
 }
 
 // ---------- settings ----------
@@ -192,6 +278,7 @@ async fn cancellable<T>(
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         // A second launch brings the running window forward instead of opening another app.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -206,6 +293,7 @@ pub fn run() {
             app.manage(State {
                 db: Mutex::new(db),
                 running: Mutex::default(),
+                sync_errors: Mutex::default(),
             });
             sync::start(app.handle().clone());
             Ok(())
@@ -214,6 +302,12 @@ pub fn run() {
             list_items,
             set_triage,
             sync_now,
+            create_task,
+            set_task_done,
+            delete_task,
+            list_sources,
+            save_source,
+            delete_source,
             get_setting,
             set_setting,
             list_providers,
@@ -236,6 +330,7 @@ mod tests {
         State {
             db: Mutex::new(db::open_in_memory()),
             running: Mutex::default(),
+            sync_errors: Mutex::default(),
         }
     }
 
