@@ -146,6 +146,9 @@ export const listModels = (providerId: string) => invoke<string[]>('list_models'
 export const ask = (requestId: string, providerId: string, request: AskRequest) =>
   invoke<Reply>('ask', { requestId, providerId, request })
 export const cancel = (requestId: string) => invoke<void>('cancel', { requestId })
+/** Writes today's briefing with the strong model. `done` is what was already ticked off today. */
+export const briefing = (requestId: string, lang: 'en' | 'fr', done: string[]) =>
+  invoke<Reply>('briefing', { requestId, lang, done })
 
 /** Calls `handler` whenever stored items may have changed. Resolves to the function that stops it. */
 export const onItemsChanged = (handler: () => void): Promise<UnlistenFn> =>

@@ -52,6 +52,21 @@ export const en = {
     delete: 'Delete',
     groups: { doing: 'In progress', todo: 'To do', done: 'Finished' },
   },
+  today: {
+    hello: 'Hello',
+    evening: 'Good evening',
+    // Under a number, so worded to read right with 1 as with 5.
+    events: 'on the calendar today',
+    waiting: 'to handle',
+    inProgress: 'in progress',
+    reviews: 'to review or merge',
+    briefing: 'Briefing',
+    refresh: 'Write again',
+    writing: 'Writing your briefing…',
+    noModel: 'Choose an AI model in the settings to get a briefing of your day.',
+    allDone: 'All handled. "Write again" suggests what comes next.',
+    agenda: 'Today',
+  },
   calendar: {
     previous: 'Previous month',
     next: 'Next month',

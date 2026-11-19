@@ -1,3 +1,4 @@
+mod assistant;
 mod connectors;
 mod db;
 mod error;
@@ -264,6 +265,29 @@ async fn ask(
     Ok(cancellable(&app.state::<State>(), request_id, ANSWER_LIMIT, call).await?)
 }
 
+/// Writes the morning briefing from what the app knows, with the user's strong model.
+/// `done` is what the user already ticked off today. Cancellable like `ask`.
+#[tauri::command]
+async fn briefing(
+    app: AppHandle,
+    request_id: String,
+    lang: assistant::Lang,
+    done: Vec<String>,
+) -> Result<llm::Reply> {
+    let state = app.state::<State>();
+    // The database is read and released before the model is waited on.
+    let (provider, request) = {
+        let db = state.db();
+        let (provider, model) = llm::chosen(&db, llm::Tier::Strong)?;
+        let request = assistant::briefing_request(&db, lang, &done, chrono::Local::now(), model)?;
+        (provider, request)
+    };
+    let key = secrets::get(&provider.id)?;
+    let workdir = app.path().app_cache_dir()?.join("cli");
+    let call = llm::complete(&provider, key.as_deref(), &request, &workdir);
+    Ok(cancellable(&state, request_id, ANSWER_LIMIT, call).await?)
+}
+
 /// Stops a call started by `ask`. Nothing happens if it has already ended.
 #[tauri::command]
 fn cancel(state: tauri::State<'_, State>, request_id: &str) {
@@ -336,6 +360,7 @@ pub fn run() {
             delete_provider,
             list_models,
             ask,
+            briefing,
             cancel,
         ])
         .run(tauri::generate_context!())

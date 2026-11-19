@@ -134,6 +134,53 @@ fn unreachable(error: reqwest::Error) -> String {
     format!("Could not reach the provider: {error}")
 }
 
+// ---------- the two models the user picked ----------
+
+/// Which of the user's two models a job needs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Tier {
+    /// Sorting, classifying, estimating. Its first user is the sorting of mail.
+    #[cfg_attr(not(test), allow(dead_code))]
+    Fast,
+    /// Writing: briefings, reviews, chat, drafts.
+    Strong,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(default)]
+struct Choice {
+    provider: String,
+    model: String,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(default)]
+struct Choices {
+    fast: Choice,
+    strong: Choice,
+}
+
+/// The provider and model to use for a job. When only one of the two models is set,
+/// it does both jobs.
+pub fn chosen(conn: &Connection, tier: Tier) -> Result<(Provider, String)> {
+    let choices: Choices = match settings::get(conn, "models")? {
+        Some(value) => serde_json::from_value(value).unwrap_or_default(),
+        None => Choices::default(),
+    };
+    let (first, second) = match tier {
+        Tier::Fast => (choices.fast, choices.strong),
+        Tier::Strong => (choices.strong, choices.fast),
+    };
+    let all = providers(conn)?;
+    [first, second]
+        .into_iter()
+        .find_map(|choice| {
+            let provider = all.iter().find(|provider| provider.id == choice.provider)?;
+            Some((provider.clone(), choice.model))
+        })
+        .ok_or_else(|| crate::error::Error::Message("Choose a model in the settings first.".into()))
+}
+
 // ---------- the providers the user has set up ----------
 
 const PROVIDERS: &str = "providers";
@@ -191,6 +238,31 @@ mod tests {
 
         delete_provider(&conn, "a").unwrap();
         assert_eq!(providers(&conn).unwrap(), [provider("b", "Second")]);
+    }
+
+    #[test]
+    fn a_job_uses_its_model_or_the_other_one_when_only_one_is_set() {
+        let conn = open_in_memory();
+        assert!(chosen(&conn, Tier::Strong).is_err());
+
+        save_provider(&conn, provider("a", "First")).unwrap();
+        save_provider(&conn, provider("b", "Second")).unwrap();
+        let set = |value| settings::set(&conn, "models", &value).unwrap();
+        set(serde_json::json!({ "fast": { "provider": "a", "model": "small" } }));
+        let (used, model) = chosen(&conn, Tier::Strong).unwrap();
+        assert_eq!((used.id.as_str(), model.as_str()), ("a", "small"));
+
+        set(serde_json::json!({
+            "fast": { "provider": "a", "model": "small" },
+            "strong": { "provider": "b", "model": "big" },
+        }));
+        let (used, model) = chosen(&conn, Tier::Strong).unwrap();
+        assert_eq!((used.id.as_str(), model.as_str()), ("b", "big"));
+        assert_eq!(chosen(&conn, Tier::Fast).unwrap().1, "small");
+
+        // A model set on a provider that was removed since does not count.
+        delete_provider(&conn, "b").unwrap();
+        assert_eq!(chosen(&conn, Tier::Strong).unwrap().1, "small");
     }
 
     #[test]
