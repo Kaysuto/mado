@@ -52,6 +52,16 @@ export const fr: typeof en = {
     delete: 'Supprimer',
     groups: { doing: 'En cours', todo: 'À faire', done: 'Terminées' },
   },
+  calendar: {
+    previous: 'Mois précédent',
+    next: 'Mois suivant',
+    today: "Aujourd'hui",
+    allDay: 'Toute la journée',
+    free: 'Rien de prévu.',
+    untitled: '(sans titre)',
+    join: 'Rejoindre',
+    events: 'événements',
+  },
   sources: {
     title: 'Sources',
     intro: "Connectez les services où se trouve votre travail. Madow les lit elle-même ; le modèle d'IA n'y a jamais accès.",
@@ -60,13 +70,14 @@ export const fr: typeof en = {
     confirmRemove: 'Confirmer le retrait',
     service: 'Service',
     name: 'Nom',
-    token: { github: 'Jeton (facultatif)', linear: 'Clé API' },
+    token: { github: 'Jeton (facultatif)', linear: 'Clé API', ical: 'Adresse iCal secrète' },
     add: 'Ajouter',
     sync: 'Synchroniser',
     hints: {
       github:
         "Laissez le jeton vide pour utiliser la connexion de l'outil GitHub CLI (gh), s'il est installé. Sinon, créez un jeton d'accès personnel qui peut lire vos dépôts et vos notifications.",
       linear: 'Créez une clé API personnelle dans Linear, dans Réglages, Sécurité et accès.',
+      ical: "Tout service d'agenda peut donner une adresse iCal privée (dans Google Agenda : paramètres de l'agenda, « Adresse secrète au format iCal »). Quiconque la possède peut lire l'agenda : elle est donc rangée dans votre trousseau. Lecture seule.",
     },
   },
   models: {

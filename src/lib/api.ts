@@ -40,6 +40,9 @@ export interface ItemQuery {
   kinds?: Kind[]
   triage?: Triage
   search?: string
+  /** Unix seconds: keeps what is still going on at `since` and what starts before `until`. */
+  since?: number
+  until?: number
   limit?: number
 }
 
@@ -69,7 +72,7 @@ export function openPage(url: string | null) {
 
 // ---------- sources (types mirror `src-tauri/src/connectors/mod.rs`) ----------
 
-export type SourceKind = 'github' | 'linear'
+export type SourceKind = 'github' | 'linear' | 'ical'
 
 export interface Source {
   id: string

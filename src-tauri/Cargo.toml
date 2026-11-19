@@ -17,6 +17,8 @@ tauri-build = { version = "2.7.5" }
 
 [dependencies]
 async-trait = "0.1.92"
+chrono = "0.4.45"
+icalendar = { version = "0.17.17", features = ["parser", "recurrence"] }
 keyring = "4.2.0"
 reqwest = { version = "0.13.5", features = ["json"] }
 rusqlite = { version = "0.43.0", features = ["bundled"] }

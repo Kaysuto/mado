@@ -3,19 +3,21 @@
   import { type SourceKind, type SourceView, deleteSource, listSources, saveSource, syncNow } from './lib/api'
   import { i18n } from './lib/i18n.svelte'
 
-  const KINDS: SourceKind[] = ['github', 'linear']
-  const NAMES: Record<SourceKind, string> = { github: 'GitHub', linear: 'Linear' }
+  const KINDS: SourceKind[] = ['github', 'linear', 'ical']
+  /** Calendars have no brand: any service gives an iCal address. */
+  const label = (kind: SourceKind) =>
+    ({ github: 'GitHub', linear: 'Linear', ical: `${i18n.t.spaces.calendar} (iCal)` })[kind]
 
   let sources = $state<SourceView[]>([])
   let kind = $state<SourceKind>('github')
-  let name = $state(NAMES.github)
+  let name = $state('GitHub')
   let token = $state('')
   let busy = $state(false)
   let error = $state('')
   let armed = $state('') // id of the source whose removal waits for a second click
 
   $effect(() => {
-    name = NAMES[kind]
+    name = kind === 'ical' ? i18n.t.spaces.calendar : label(kind)
     token = ''
   })
 
@@ -73,7 +75,7 @@
   {#each sources as source (source.id)}
     <li>
       <span class="name">{source.name}</span>
-      <span class="hint">{NAMES[source.kind]}</span>
+      <span class="hint">{label(source.kind)}</span>
       {#if source.error}
         <span class="error" role="alert">{source.error}</span>
       {/if}
@@ -92,7 +94,7 @@
 >
   <select class="field" aria-label={i18n.t.sources.service} bind:value={kind}>
     {#each KINDS as option (option)}
-      <option value={option}>{NAMES[option]}</option>
+      <option value={option}>{label(option)}</option>
     {/each}
   </select>
   <input class="field" placeholder={i18n.t.sources.name} aria-label={i18n.t.sources.name} required bind:value={name} />
@@ -102,7 +104,7 @@
     autocomplete="off"
     placeholder={i18n.t.sources.token[kind]}
     aria-label={i18n.t.sources.token[kind]}
-    required={kind === 'linear'}
+    required={kind !== 'github'}
     bind:value={token}
   />
   <button class="btn" type="submit" disabled={busy}>{i18n.t.sources.add}</button>
