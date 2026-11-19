@@ -51,6 +51,8 @@ const MIGRATIONS: &[&str] = &[
         value TEXT NOT NULL
     ) WITHOUT ROWID;
     ",
+    // 2: the label a model gave an item when sorting it. Local, like the triage.
+    "ALTER TABLE items ADD COLUMN label TEXT;",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {

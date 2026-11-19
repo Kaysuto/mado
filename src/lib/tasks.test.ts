@@ -17,6 +17,7 @@ function item(title: string, extra: Partial<Item> = {}): Item {
     occurredAt: 0,
     endsAt: null,
     meta: {},
+    label: null,
     ...extra,
   }
 }

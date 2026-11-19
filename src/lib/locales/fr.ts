@@ -26,7 +26,17 @@ export const fr: typeof en = {
     alert: 'Alerte',
     article: 'Article',
   },
+  labels: {
+    action: 'Action requise',
+    read: 'À lire',
+    finance: 'Banque et factures',
+    notification: 'Notifications',
+    promo: 'Promotions',
+  },
   inbox: {
+    sort: 'Trier les mails',
+    sorting: 'Tri des mails…',
+    stop: 'Arrêter',
     search: 'Chercher partout',
     toHandle: 'À traiter',
     done: 'Faits',

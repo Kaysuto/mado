@@ -315,6 +315,43 @@ async fn chat(
     Ok(cancellable(&state, request_id, ANSWER_LIMIT, call).await?)
 }
 
+/// Sorts the mail still waiting without a label, with the user's fast model, and returns how
+/// many mails got one. Cancellable like `ask`.
+#[tauri::command]
+async fn sort_mail(app: AppHandle, request_id: String) -> Result<usize> {
+    let state = app.state::<State>();
+    let (provider, asked, request) = {
+        let db = state.db();
+        let (provider, model) = llm::chosen(&db, llm::Tier::Fast)?;
+        match assistant::sort_request(&db, model)? {
+            Some((asked, request)) => (provider, asked, request),
+            None => return Ok(0),
+        }
+    };
+    let key = secrets::get(&provider.id)?;
+    let workdir = app.path().app_cache_dir()?.join("cli");
+    let attempts = async {
+        // Asked a second time when the first answer cannot be read: small models slip now and then.
+        for _ in 0..2 {
+            let reply = llm::complete(&provider, key.as_deref(), &request, &workdir).await?;
+            let labels = assistant::read_labels(&reply.text, &asked);
+            if !labels.is_empty() {
+                return Ok(labels);
+            }
+        }
+        Err(
+            "The model's answer could not be read. Try again, or choose another fast model."
+                .to_owned(),
+        )
+    };
+    let labels = cancellable(&state, request_id, ANSWER_LIMIT, attempts).await?;
+    for (id, label) in &labels {
+        items::set_label(&state.db(), *id, *label)?;
+    }
+    app.emit(sync::ITEMS_CHANGED, ())?;
+    Ok(labels.len())
+}
+
 /// Stops a call started by `ask`. Nothing happens if it has already ended.
 #[tauri::command]
 fn cancel(state: tauri::State<'_, State>, request_id: &str) {
@@ -389,6 +426,7 @@ pub fn run() {
             ask,
             briefing,
             chat,
+            sort_mail,
             cancel,
         ])
         .run(tauri::generate_context!())
