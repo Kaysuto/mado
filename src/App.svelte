@@ -4,6 +4,7 @@
   import { getSetting, setSetting } from './lib/api'
   import { i18n, restoreLocale } from './lib/i18n.svelte'
   import { SPACES, type Space } from './lib/spaces'
+  import Calendar from './spaces/Calendar.svelte'
   import Inbox from './spaces/Inbox.svelte'
   import Tasks from './spaces/Tasks.svelte'
 
@@ -71,6 +72,8 @@
   <main>
     {#if view === 'inbox'}
       <Inbox onsettings={() => show('settings')} />
+    {:else if view === 'calendar'}
+      <Calendar />
     {:else if view === 'tasks'}
       <Tasks />
     {:else if view === 'settings'}

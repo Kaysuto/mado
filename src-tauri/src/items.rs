@@ -103,6 +103,9 @@ pub struct Query {
     pub triage: Option<Triage>,
     /// Words to find in title, body or author; the last one may be a prefix.
     pub search: String,
+    /// Unix seconds. Keeps what is still going on at `since`, and what starts before `until`.
+    pub since: Option<i64>,
+    pub until: Option<i64>,
     pub limit: Option<u32>,
 }
 
@@ -239,6 +242,14 @@ pub fn list(conn: &Connection, query: &Query) -> Result<Vec<Item>> {
     if let Some(triage) = query.triage {
         filters.push("triage = ?".into());
         values.push(stored_text(triage)?);
+    }
+    if let Some(since) = query.since {
+        filters.push("COALESCE(ends_at, occurred_at) >= ?".into());
+        values.push(since.into());
+    }
+    if let Some(until) = query.until {
+        filters.push("occurred_at < ?".into());
+        values.push(until.into());
     }
     if !filters.is_empty() {
         sql.push_str(" WHERE ");
@@ -401,6 +412,30 @@ mod tests {
 
         delete_local(&conn, task).unwrap();
         assert_eq!(titles(&conn, Query::default()), ["Mail"]);
+    }
+
+    #[test]
+    fn filters_by_time_keeping_what_is_still_going_on() {
+        let mut conn = open_in_memory();
+        let mut long = item("1", Kind::Event, "Three-day trip", 10);
+        long.ends_at = Some(40);
+        replace_source(
+            &mut conn,
+            "a",
+            &[
+                long,
+                item("2", Kind::Event, "Before", 5),
+                item("3", Kind::Event, "Inside", 25),
+                item("4", Kind::Event, "After", 30),
+            ],
+        )
+        .unwrap();
+        let query = Query {
+            since: Some(20),
+            until: Some(30),
+            ..Query::default()
+        };
+        assert_eq!(titles(&conn, query), ["Inside", "Three-day trip"]);
     }
 
     #[test]

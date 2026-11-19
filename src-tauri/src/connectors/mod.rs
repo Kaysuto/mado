@@ -3,6 +3,7 @@
 
 mod demo;
 mod github;
+mod ical;
 mod linear;
 
 use crate::{error::Result, items::NewItem, secrets, settings};
@@ -34,6 +35,8 @@ pub enum SourceKind {
     Github,
     /// A ticket tracker.
     Linear,
+    /// A calendar, read from its iCalendar feed. Its "token" is the feed's secret address.
+    Ical,
 }
 
 /// A source the user has connected. Its token, if any, is in the keychain.
@@ -86,6 +89,7 @@ pub fn configured(conn: &Connection) -> Result<Vec<Box<dyn Connector>>> {
         connectors.push(match source.kind {
             SourceKind::Github => Box::new(github::Github::new(source.id, token)),
             SourceKind::Linear => Box::new(linear::Linear::new(source.id, token)),
+            SourceKind::Ical => Box::new(ical::Ical::new(source.id, token)),
         });
     }
     Ok(connectors)

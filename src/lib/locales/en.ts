@@ -50,6 +50,16 @@ export const en = {
     delete: 'Delete',
     groups: { doing: 'In progress', todo: 'To do', done: 'Finished' },
   },
+  calendar: {
+    previous: 'Previous month',
+    next: 'Next month',
+    today: 'Today',
+    allDay: 'All day',
+    free: 'Nothing planned.',
+    untitled: '(no title)',
+    join: 'Join',
+    events: 'events',
+  },
   sources: {
     title: 'Sources',
     intro: 'Connect the services your work lives in. Madow reads them itself; the AI model never gets access to them.',
@@ -58,13 +68,14 @@ export const en = {
     confirmRemove: 'Confirm removal',
     service: 'Service',
     name: 'Name',
-    token: { github: 'Token (optional)', linear: 'API key' },
+    token: { github: 'Token (optional)', linear: 'API key', ical: 'Secret iCal address' },
     add: 'Add',
     sync: 'Sync now',
     hints: {
       github:
         'Leave the token empty to use the sign-in of the GitHub CLI (gh), if it is installed. Otherwise create a personal access token that can read your repositories and notifications.',
       linear: 'Create a personal API key in Linear, under Settings, Security & access.',
+      ical: 'Every calendar service can give a private iCal address (in Google Calendar: settings of the calendar, "Secret address in iCal format"). Anyone who has it can read the calendar, so it is kept in your keychain. Reading only.',
     },
   },
   models: {

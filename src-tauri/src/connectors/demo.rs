@@ -3,12 +3,14 @@
 use super::Connector;
 use crate::items::{Kind, NewItem, now};
 use async_trait::async_trait;
+use chrono::{Local, TimeZone};
 use serde_json::json;
 
 pub struct Demo;
 
 const MINUTE: i64 = 60;
 const HOUR: i64 = 60 * MINUTE;
+const DAY: i64 = 24 * HOUR;
 
 #[async_trait]
 impl Connector for Demo {
@@ -111,7 +113,7 @@ impl Connector for Demo {
                 None,
             ),
         ];
-        Ok(samples
+        let mut items: Vec<NewItem> = samples
             .into_iter()
             .map(|(id, kind, title, body, author, state, offset, duration)| {
                 let occurred_at = now + offset;
@@ -128,10 +130,55 @@ impl Connector for Demo {
                     // Trackers say how far along a ticket is; the Tasks space groups by it.
                     meta: match kind {
                         Kind::Ticket => json!({ "identifier": "APP-77", "stateType": "started" }),
+                        Kind::Event => json!({
+                            "allDay": false,
+                            "location": "Video call",
+                            "link": "https://meet.example.com/weekly-sync",
+                        }),
                         _ => json!({}),
                     },
                 }
             })
-            .collect())
+            .collect();
+
+        // A few more days of calendar, anchored on local midnight like real whole-day events.
+        let midnight = Local::now()
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .and_then(|start| Local.from_local_datetime(&start).earliest())
+            .map_or(now, |start| start.timestamp());
+        let event =
+            |id: &str, title: &str, start: i64, length: i64, all_day: bool, place: &str| NewItem {
+                external_id: id.into(),
+                kind: Kind::Event,
+                title: title.into(),
+                body: String::new(),
+                author: None,
+                url: None,
+                state: "confirmed".into(),
+                occurred_at: start,
+                ends_at: Some(start + length),
+                meta: json!({ "allDay": all_day, "location": place, "link": null }),
+            };
+        items.extend([
+            event(
+                "event-2",
+                "Design review",
+                midnight + 38 * HOUR,
+                HOUR,
+                false,
+                "Room 4",
+            ),
+            event("event-3", "Release day", midnight + 3 * DAY, DAY, true, ""),
+            event(
+                "event-4",
+                "Conference",
+                midnight + 8 * DAY,
+                3 * DAY,
+                true,
+                "Lyon",
+            ),
+        ]);
+        Ok(items)
     }
 }
