@@ -54,6 +54,53 @@ export const getSetting = <T>(key: string) => invoke<T | null>('get_setting', { 
 export const setSetting = (key: string, value: unknown) => invoke<void>('set_setting', { key, value })
 export const syncNow = () => invoke<SyncFailure[]>('sync_now')
 
+// ---------- models (types mirror `src-tauri/src/llm/mod.rs`) ----------
+
+export type ProviderKind = 'anthropic' | 'openai_compat' | 'claude_code' | 'codex'
+
+export interface Provider {
+  id: string
+  kind: ProviderKind
+  name: string
+  /** Required for `openai_compat`; empty otherwise. */
+  baseUrl: string
+}
+
+/** A provider as stored. The key itself never leaves the core. */
+export interface ProviderView extends Provider {
+  hasKey: boolean
+  /** Subscription providers: whether their command-line tool is installed. */
+  installed: boolean | null
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface AskRequest {
+  model: string
+  system?: string
+  messages: ChatMessage[]
+}
+
+export interface Reply {
+  text: string
+  inputTokens: number | null
+  outputTokens: number | null
+}
+
+export const listProviders = () => invoke<ProviderView[]>('list_providers')
+/** `key` replaces the stored API key; leaving it out keeps the current one. */
+export const saveProvider = (provider: Provider, key?: string) =>
+  invoke<void>('save_provider', { provider, key })
+export const deleteProvider = (id: string) => invoke<void>('delete_provider', { id })
+export const listModels = (providerId: string) => invoke<string[]>('list_models', { providerId })
+/** `requestId` is any unique string; pass it to `cancel` to stop the call. */
+export const ask = (requestId: string, providerId: string, request: AskRequest) =>
+  invoke<Reply>('ask', { requestId, providerId, request })
+export const cancel = (requestId: string) => invoke<void>('cancel', { requestId })
+
 /** Calls `handler` whenever stored items may have changed. Resolves to the function that stops it. */
 export const onItemsChanged = (handler: () => void): Promise<UnlistenFn> =>
   listen('items-changed', handler)
