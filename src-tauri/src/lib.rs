@@ -99,6 +99,26 @@ fn delete_task(app: AppHandle, id: i64) -> Result<()> {
     Ok(())
 }
 
+/// Does something to an item where it lives (mark a mail as read, archive it…), then
+/// records the result locally.
+#[tauri::command]
+async fn act_on_item(app: AppHandle, id: i64, action: connectors::Action) -> Result<()> {
+    let state = app.state::<State>();
+    let gone = || Error::Message("This item no longer exists.".into());
+    let item = items::get(&state.db(), id)?.ok_or_else(gone)?;
+    let connector = connectors::configured(&state.db())?
+        .into_iter()
+        .find(|connector| connector.source() == item.source)
+        .ok_or_else(gone)?;
+    connector.act(&item.external_id, action).await?;
+    match action {
+        connectors::Action::MarkRead => items::set_state(&state.db(), id, "read")?,
+        connectors::Action::Archive => items::set_triage(&state.db(), id, items::Triage::Done)?,
+    }
+    app.emit(sync::ITEMS_CHANGED, ())?;
+    Ok(())
+}
+
 // ---------- sources ----------
 
 /// A source as the interface sees it: never its token, only whether it has one.
@@ -305,6 +325,7 @@ pub fn run() {
             create_task,
             set_task_done,
             delete_task,
+            act_on_item,
             list_sources,
             save_source,
             delete_source,

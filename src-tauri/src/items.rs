@@ -201,6 +201,27 @@ pub fn delete_local(conn: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
+/// The item with this id, if it still exists.
+pub fn get(conn: &Connection, id: i64) -> Result<Option<Item>> {
+    let mut statement = conn.prepare(
+        "SELECT id, source, external_id, kind, title, body, author, url,
+                state, triage, occurred_at, ends_at, meta
+         FROM items WHERE id = ?1",
+    )?;
+    let mut rows = statement.query_map([id], read_item)?;
+    Ok(rows.next().transpose()?)
+}
+
+/// Records the new state of an item after an action on its source succeeded, without waiting
+/// for the next sync to bring it back.
+pub fn set_state(conn: &Connection, id: i64, state: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE items SET state = ?2 WHERE id = ?1",
+        params![id, state],
+    )?;
+    Ok(())
+}
+
 pub fn set_triage(conn: &Connection, id: i64, triage: Triage) -> Result<()> {
     conn.execute(
         "UPDATE items SET triage = ?2 WHERE id = ?1",

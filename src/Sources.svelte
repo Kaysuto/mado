@@ -3,21 +3,26 @@
   import { type SourceKind, type SourceView, deleteSource, listSources, saveSource, syncNow } from './lib/api'
   import { i18n } from './lib/i18n.svelte'
 
-  const KINDS: SourceKind[] = ['github', 'linear', 'ical']
+  const KINDS: SourceKind[] = ['github', 'linear', 'ical', 'imap']
+  /** Servers of common mail services, offered while typing. Any other IMAP server works too. */
+  const MAIL_SERVERS = ['imap.gmail.com', 'imap.mail.me.com', 'imap.fastmail.com', 'imap.mail.yahoo.com', 'imap.gmx.com']
   /** Calendars have no brand: any service gives an iCal address. */
   const label = (kind: SourceKind) =>
-    ({ github: 'GitHub', linear: 'Linear', ical: `${i18n.t.spaces.calendar} (iCal)` })[kind]
+    ({ github: 'GitHub', linear: 'Linear', ical: `${i18n.t.spaces.calendar} (iCal)`, imap: `${i18n.t.kinds.mail} (IMAP)` })[kind]
 
   let sources = $state<SourceView[]>([])
   let kind = $state<SourceKind>('github')
   let name = $state('GitHub')
   let token = $state('')
+  let host = $state('')
+  let port = $state(993)
+  let username = $state('')
   let busy = $state(false)
   let error = $state('')
   let armed = $state('') // id of the source whose removal waits for a second click
 
   $effect(() => {
-    name = kind === 'ical' ? i18n.t.spaces.calendar : label(kind)
+    name = kind === 'ical' ? i18n.t.spaces.calendar : kind === 'imap' ? i18n.t.kinds.mail : label(kind)
     token = ''
   })
 
@@ -44,7 +49,8 @@
 
   const add = () =>
     guard(async () => {
-      await saveSource({ id: crypto.randomUUID(), kind, name: name.trim() }, token)
+      const options = kind === 'imap' ? { host: host.trim(), port, username: username.trim() } : {}
+      await saveSource({ id: crypto.randomUUID(), kind, name: name.trim(), options }, token)
       token = ''
       await syncNow()
       sources = await listSources()
@@ -98,6 +104,39 @@
     {/each}
   </select>
   <input class="field" placeholder={i18n.t.sources.name} aria-label={i18n.t.sources.name} required bind:value={name} />
+  {#if kind === 'imap'}
+    <input
+      class="field wide"
+      placeholder={i18n.t.sources.server}
+      aria-label={i18n.t.sources.server}
+      list="mail-servers"
+      required
+      bind:value={host}
+    />
+    <datalist id="mail-servers">
+      {#each MAIL_SERVERS as server (server)}
+        <option value={server}></option>
+      {/each}
+    </datalist>
+    <input
+      class="field port"
+      type="number"
+      min="1"
+      max="65535"
+      aria-label={i18n.t.sources.port}
+      required
+      bind:value={port}
+    />
+    <input
+      class="field wide"
+      type="email"
+      autocomplete="off"
+      placeholder={i18n.t.sources.user}
+      aria-label={i18n.t.sources.user}
+      required
+      bind:value={username}
+    />
+  {/if}
   <input
     class="field wide"
     type="password"
@@ -158,6 +197,9 @@
   }
   .wide {
     flex: 1 1 260px;
+  }
+  .port {
+    width: 84px;
   }
   .error {
     color: var(--danger);
