@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { type Item, listItems, onItemsChanged, openPage } from '../lib/api'
-  import { addDays, eventsOn, isSingleDay, monthGrid, startOfDay } from '../lib/calendar'
+  import { addDays, eventsOn, formatWhen, isSingleDay, monthGrid, startOfDay } from '../lib/calendar'
   import { i18n } from '../lib/i18n.svelte'
 
   const today = startOfDay(new Date())
@@ -23,7 +23,6 @@
       new Intl.DateTimeFormat(i18n.locale, { weekday: 'short' }).format(new Date(2026, 0, 5 + index)),
     ),
   )
-  const clock = $derived(new Intl.DateTimeFormat(i18n.locale, { hour: '2-digit', minute: '2-digit' }))
 
   const same = (a: Date, b: Date) => a.getTime() === b.getTime()
 
@@ -68,12 +67,6 @@
   function pick(day: Date) {
     selected = day
     if (day.getMonth() !== month.getMonth()) month = new Date(day.getFullYear(), day.getMonth(), 1)
-  }
-
-  function when(event: Item): string {
-    if (event.meta.allDay === true) return i18n.t.calendar.allDay
-    const start = clock.format(event.occurredAt * 1000)
-    return event.endsAt ? `${start} – ${clock.format(event.endsAt * 1000)}` : start
   }
 </script>
 
@@ -121,7 +114,7 @@
     <ul>
       {#each agenda as event (event.id)}
         <li>
-          <span class="when">{when(event)}</span>
+          <span class="when">{formatWhen(event, i18n.locale, i18n.t.calendar.allDay)}</span>
           <span class="what">
             <span class="title">{event.title || i18n.t.calendar.untitled}</span>
             {#if typeof event.meta.location === 'string' && event.meta.location}

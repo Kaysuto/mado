@@ -7,6 +7,7 @@
   import Calendar from './spaces/Calendar.svelte'
   import Inbox from './spaces/Inbox.svelte'
   import Tasks from './spaces/Tasks.svelte'
+  import Today from './spaces/Today.svelte'
 
   type View = Space | 'settings'
   const VIEWS: readonly View[] = [...SPACES, 'settings']
@@ -70,7 +71,9 @@
   </nav>
 
   <main>
-    {#if view === 'inbox'}
+    {#if view === 'today'}
+      <Today onshow={show} />
+    {:else if view === 'inbox'}
       <Inbox onsettings={() => show('settings')} />
     {:else if view === 'calendar'}
       <Calendar />

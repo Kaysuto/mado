@@ -38,6 +38,14 @@ export function eventsOn(events: Item[], day: Date): Item[] {
     )
 }
 
+/** "10:00 – 10:30", "10:00" when there is no end, or the given label for a whole day. */
+export function formatWhen(event: Item, locale: string, allDay: string): string {
+  if (event.meta.allDay === true) return allDay
+  const clock = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' })
+  const start = clock.format(event.occurredAt * 1000)
+  return event.endsAt ? `${start} – ${clock.format(event.endsAt * 1000)}` : start
+}
+
 /** Whether a whole-day event really is a single day, to show it without a date range. */
 export function isSingleDay(event: Item): boolean {
   return event.endsAt === null || event.endsAt - event.occurredAt <= DAY
