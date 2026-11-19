@@ -1,19 +1,26 @@
 [package]
-name = "mado"
+name = "madow"
 version = "0.0.0"
 description = "The all-in-one workspace for developers, with the AI model of your choice"
 authors = ["Kaysuto"]
 license = "MIT"
-repository = "https://github.com/Kaysuto/mado"
+repository = "https://github.com/Kaysuto/madow"
 edition = "2024"
 rust-version = "1.90"
 
 [lib]
-name = "mado_lib"
+name = "madow_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2.7.5" }
 
 [dependencies]
+async-trait = "0.1.92"
+rusqlite = { version = "0.43.0", features = ["bundled"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
 tauri = { version = "2.12.6" }
+tauri-plugin-single-instance = "2.5.5"
+thiserror = "2.0.21"
+tokio = { version = "1.54.1", features = ["time"] }

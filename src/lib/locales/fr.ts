@@ -2,7 +2,7 @@ import type { en } from './en'
 
 export const fr: typeof en = {
   comingSoon: "Cet espace n'est pas encore construit.",
-  language: 'Langue',
+  settings: 'Réglages',
   spaces: {
     today: "Aujourd'hui",
     inbox: 'Boîte',
@@ -13,5 +13,34 @@ export const fr: typeof en = {
     notes: 'Notes',
     review: 'Bilan',
     automations: 'Automatisations',
+  },
+  kinds: {
+    mail: 'Mail',
+    ticket: 'Ticket',
+    merge_request: 'Demande de fusion',
+    notification: 'Notification',
+    event: 'Événement',
+    task: 'Tâche',
+    note: 'Note',
+    message: 'Message',
+    alert: 'Alerte',
+    article: 'Article',
+  },
+  inbox: {
+    search: 'Chercher partout',
+    toHandle: 'À traiter',
+    done: 'Faits',
+    markDone: 'Fait',
+    restore: 'Remettre',
+    empty: 'Rien ici.',
+    noMatch: 'Rien ne correspond à cette recherche.',
+    noSource: "Aucune source n'est encore connectée. Activez les données d'exemple pour découvrir l'application.",
+    openSettings: 'Ouvrir les réglages',
+  },
+  prefs: {
+    language: 'Langue',
+    demo: "Données d'exemple",
+    demoHint: "Remplit l'application d'éléments fictifs, pour l'essayer sans connecter de compte.",
+    syncFailed: 'Synchronisation impossible',
   },
 }

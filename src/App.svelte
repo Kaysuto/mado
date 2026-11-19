@@ -1,17 +1,35 @@
 <script lang="ts">
-  import { i18n } from './lib/i18n.svelte'
-  import { LOCALES } from './lib/locale'
+  import { onMount } from 'svelte'
+  import Settings from './Settings.svelte'
+  import { getSetting, setSetting } from './lib/api'
+  import { i18n, restoreLocale } from './lib/i18n.svelte'
   import { SPACES, type Space } from './lib/spaces'
+  import Inbox from './spaces/Inbox.svelte'
 
-  let current = $state<Space>('today')
+  type View = Space | 'settings'
+  const VIEWS: readonly View[] = [...SPACES, 'settings']
+
+  let view = $state<View>('today')
+
+  /** Opens a view and remembers it, so the app reopens where it was left. */
+  function show(next: View) {
+    view = next
+    void setSetting('view', next)
+  }
 
   function onkeydown(event: KeyboardEvent) {
     const space = SPACES[Number(event.key) - 1]
     if (event.altKey && space) {
       event.preventDefault()
-      current = space
+      show(space)
     }
   }
+
+  onMount(async () => {
+    await restoreLocale()
+    const saved = await getSetting<string>('view')
+    view = VIEWS.find(v => v === saved) ?? view
+  })
 
   $effect(() => {
     document.documentElement.lang = i18n.locale
@@ -21,18 +39,18 @@
 <svelte:window {onkeydown} />
 
 <div class="shell">
-  <nav class="sidebar" aria-label="Mado">
+  <nav class="sidebar" aria-label="Madow">
     <div class="brand">
       <span class="logo" aria-hidden="true">窓</span>
-      <span>Mado</span>
+      <span>Madow</span>
     </div>
     <ul>
       {#each SPACES as space, index (space)}
         <li>
           <button
             class="nav"
-            aria-current={current === space ? 'page' : undefined}
-            onclick={() => (current = space)}
+            aria-current={view === space ? 'page' : undefined}
+            onclick={() => show(space)}
           >
             <span>{i18n.t.spaces[space]}</span>
             <kbd>Alt+{index + 1}</kbd>
@@ -40,19 +58,24 @@
         </li>
       {/each}
     </ul>
-    <label class="lang">
-      <span>{i18n.t.language}</span>
-      <select bind:value={i18n.locale}>
-        {#each LOCALES as locale (locale)}
-          <option value={locale}>{locale.toUpperCase()}</option>
-        {/each}
-      </select>
-    </label>
+    <button
+      class="nav"
+      aria-current={view === 'settings' ? 'page' : undefined}
+      onclick={() => show('settings')}
+    >
+      {i18n.t.settings}
+    </button>
   </nav>
 
   <main>
-    <h1>{i18n.t.spaces[current]}</h1>
-    <p class="muted">{i18n.t.comingSoon}</p>
+    {#if view === 'inbox'}
+      <Inbox onsettings={() => show('settings')} />
+    {:else if view === 'settings'}
+      <Settings />
+    {:else}
+      <h1>{i18n.t.spaces[view]}</h1>
+      <p class="muted">{i18n.t.comingSoon}</p>
+    {/if}
   </main>
 </div>
 
@@ -121,22 +144,6 @@
     font: inherit;
     font-size: 10px;
     opacity: 0.6;
-  }
-  .lang {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 8px;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  select {
-    padding: 4px 6px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    color: var(--text);
-    font: inherit;
   }
   main {
     padding: 32px 40px;

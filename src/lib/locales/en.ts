@@ -1,6 +1,6 @@
 export const en = {
   comingSoon: 'This space is not built yet.',
-  language: 'Language',
+  settings: 'Settings',
   spaces: {
     today: 'Today',
     inbox: 'Inbox',
@@ -11,5 +11,34 @@ export const en = {
     notes: 'Notes',
     review: 'Review',
     automations: 'Automations',
+  },
+  kinds: {
+    mail: 'Mail',
+    ticket: 'Ticket',
+    merge_request: 'Merge request',
+    notification: 'Notification',
+    event: 'Event',
+    task: 'Task',
+    note: 'Note',
+    message: 'Message',
+    alert: 'Alert',
+    article: 'Article',
+  },
+  inbox: {
+    search: 'Search everything',
+    toHandle: 'To handle',
+    done: 'Done',
+    markDone: 'Done',
+    restore: 'Put back',
+    empty: 'Nothing here.',
+    noMatch: 'Nothing matches this search.',
+    noSource: 'No source is connected yet. Turn on the sample data to look around.',
+    openSettings: 'Open settings',
+  },
+  prefs: {
+    language: 'Language',
+    demo: 'Sample data',
+    demoHint: 'Fills the app with made-up items, to try it without connecting any account.',
+    syncFailed: 'Could not sync',
   },
 }

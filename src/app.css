@@ -8,6 +8,7 @@
   --muted: rgba(244, 244, 245, 0.6);
   --accent: #9ec8d5;
   --accent-soft: rgba(158, 200, 213, 0.16);
+  --danger: #fca5a5;
   color-scheme: dark;
 }
 
@@ -38,4 +39,45 @@ button {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Shared controls. */
+.btn {
+  flex: none;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--hover);
+  font-size: 12px;
+  font-weight: 600;
+}
+.btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--hover);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.chip[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.field {
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
 }
