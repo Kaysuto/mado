@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import Assistant from './Assistant.svelte'
   import Settings from './Settings.svelte'
   import { getSetting, setSetting } from './lib/api'
   import { i18n, restoreLocale } from './lib/i18n.svelte'
@@ -13,6 +14,13 @@
   const VIEWS: readonly View[] = [...SPACES, 'settings']
 
   let view = $state<View>('today')
+  let assistant = $state(false)
+
+  /** Opens or closes the assistant, and remembers it. */
+  function toggleAssistant() {
+    assistant = !assistant
+    void setSetting('assistant', assistant)
+  }
 
   /** Opens a view and remembers it, so the app reopens where it was left. */
   function show(next: View) {
@@ -25,6 +33,9 @@
     if (event.altKey && space) {
       event.preventDefault()
       show(space)
+    } else if (event.altKey && event.key.toLowerCase() === 'a') {
+      event.preventDefault()
+      toggleAssistant()
     }
   }
 
@@ -32,6 +43,7 @@
     await restoreLocale()
     const saved = await getSetting<string>('view')
     view = VIEWS.find(v => v === saved) ?? view
+    assistant = (await getSetting<boolean>('assistant')) === true
   })
 
   $effect(() => {
@@ -41,7 +53,7 @@
 
 <svelte:window {onkeydown} />
 
-<div class="shell">
+<div class="shell" class:with-assistant={assistant}>
   <nav class="sidebar" aria-label="Madow">
     <div class="brand">
       <span class="logo" aria-hidden="true">窓</span>
@@ -61,6 +73,10 @@
         </li>
       {/each}
     </ul>
+    <button class="nav" aria-pressed={assistant} onclick={toggleAssistant}>
+      <span>{i18n.t.assistant.title}</span>
+      <kbd>Alt+A</kbd>
+    </button>
     <button
       class="nav"
       aria-current={view === 'settings' ? 'page' : undefined}
@@ -86,13 +102,20 @@
       <p class="muted">{i18n.t.comingSoon}</p>
     {/if}
   </main>
+
+  {#if assistant}
+    <Assistant onclose={toggleAssistant} />
+  {/if}
 </div>
 
 <style>
   .shell {
     display: grid;
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 220px minmax(0, 1fr);
     height: 100%;
+  }
+  .shell.with-assistant {
+    grid-template-columns: 220px minmax(0, 1fr) minmax(300px, 380px);
   }
   .sidebar {
     display: flex;
@@ -144,6 +167,9 @@
   .nav:hover {
     background: var(--hover);
     color: var(--text);
+  }
+  .nav[aria-pressed='true'] {
+    color: var(--accent);
   }
   .nav[aria-current='page'] {
     background: var(--accent-soft);

@@ -8,6 +8,7 @@
     getSetting,
     listItems,
     onItemsChanged,
+    openLinks,
     openPage,
     setSetting,
   } from '../lib/api'
@@ -96,14 +97,6 @@
     const listening = onItemsChanged(load)
     return () => void listening.then(stop => stop())
   })
-
-  /** Links written by the model open in the browser, never inside the app's own window. */
-  function onclick(event: MouseEvent) {
-    const link = (event.target as HTMLElement).closest('a')
-    if (!link) return
-    event.preventDefault()
-    openPage(link.href)
-  }
 </script>
 
 <header>
@@ -153,7 +146,7 @@
       <button class="btn" onclick={() => onshow('settings')}>{i18n.t.inbox.openSettings}</button>
     {:else if brief}
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-      <div class="md" {onclick}>
+      <div class="md" onclick={openLinks}>
         {#each parts as part, index (index)}
           {@const items = bullets(part.body)}
           <h3>{part.heading}</h3>

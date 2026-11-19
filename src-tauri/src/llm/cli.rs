@@ -2,14 +2,17 @@
 //! Madow only launches the unmodified tool: it never reads the login or the token behind it.
 //! The tool runs in an empty folder with its tools switched off, so it can only write text.
 
-use super::{Outcome, ProviderKind, Reply, Request, Role};
+use super::{OnDelta, Outcome, ProviderKind, Reply, Request, Role};
 use serde_json::Value;
 use std::{
     path::Path,
     process::Stdio,
     time::{SystemTime, UNIX_EPOCH},
 };
-use tokio::{io::AsyncWriteExt, process::Command};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    process::Command,
+};
 
 /// Name of the tool behind a subscription provider.
 pub fn program(kind: ProviderKind) -> Option<&'static str> {
@@ -21,6 +24,67 @@ pub fn program(kind: ProviderKind) -> Option<&'static str> {
 }
 
 pub async fn complete(kind: ProviderKind, request: &Request, workdir: &Path) -> Outcome<Reply> {
+    let command = tool(kind, workdir)?;
+    match kind {
+        ProviderKind::ClaudeCode => claude(command, request).await,
+        _ => codex(command, request, workdir).await,
+    }
+}
+
+/// Like `complete`, calling `on_delta` with each piece of text as the tool prints it.
+pub async fn stream(
+    kind: ProviderKind,
+    request: &Request,
+    workdir: &Path,
+    on_delta: OnDelta<'_>,
+) -> Outcome<Reply> {
+    if kind != ProviderKind::ClaudeCode {
+        // Codex only hands its answer over whole.
+        let reply = complete(kind, request, workdir).await?;
+        on_delta(&reply.text);
+        return Ok(reply);
+    }
+    let mut command = tool(kind, workdir)?;
+    claude_arguments(
+        &mut command,
+        request,
+        &["stream-json", "--verbose", "--include-partial-messages"],
+    );
+    let mut child = command.spawn().map_err(|error| error.to_string())?;
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(transcript(request).as_bytes())
+            .await
+            .map_err(|error| error.to_string())?;
+    }
+    let stdout = child.stdout.take().ok_or("The tool gave no output.")?;
+    let mut lines = BufReader::new(stdout).lines();
+    let mut outcome = None;
+    // One JSON event per line: pieces of text while it writes, then the result.
+    while let Some(line) = lines.next_line().await.map_err(|error| error.to_string())? {
+        let Ok(event) = serde_json::from_str::<Value>(&line) else {
+            continue;
+        };
+        let delta = &event["event"]["delta"];
+        match event["type"].as_str() {
+            Some("stream_event") if delta["type"] == "text_delta" => {
+                if let Some(text) = delta["text"].as_str() {
+                    on_delta(text);
+                }
+            }
+            Some("result") => outcome = read_claude(line.as_bytes()),
+            _ => {}
+        }
+    }
+    let output = child
+        .wait_with_output()
+        .await
+        .map_err(|error| error.to_string())?;
+    outcome.ok_or_else(|| explain(&output))?
+}
+
+/// The tool of a subscription provider, ready to run in `workdir`.
+fn tool(kind: ProviderKind, workdir: &Path) -> Outcome<Command> {
     let name = program(kind).ok_or("This provider has no command-line tool.")?;
     // The full path, extension included: Windows does not find `.cmd` launchers by bare name.
     let path = which::which(name).map_err(|_| format!("`{name}` is not installed."))?;
@@ -36,18 +100,12 @@ pub async fn complete(kind: ProviderKind, request: &Request, workdir: &Path) -> 
         .kill_on_drop(true);
     #[cfg(windows)]
     command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: no console flashing on screen
-
-    match kind {
-        ProviderKind::ClaudeCode => claude(command, request).await,
-        _ => codex(command, request, workdir).await,
-    }
+    Ok(command)
 }
 
-async fn claude(mut command: Command, request: &Request) -> Outcome<Reply> {
-    command.args([
-        "-p",
-        "--output-format",
-        "json",
+/// The arguments of `claude` in print mode. `format` is the output format and its options.
+fn claude_arguments(command: &mut Command, request: &Request, format: &[&str]) {
+    command.args(["-p", "--output-format"]).args(format).args([
         // No user hooks, plugins or MCP servers; no built-in tools; nothing saved to disk.
         "--setting-sources",
         "project,local",
@@ -62,6 +120,10 @@ async fn claude(mut command: Command, request: &Request) -> Outcome<Reply> {
     if let Some(system) = &request.system {
         command.args(["--system-prompt", system]);
     }
+}
+
+async fn claude(mut command: Command, request: &Request) -> Outcome<Reply> {
+    claude_arguments(&mut command, request, &["json"]);
     let output = run(command, &transcript(request)).await?;
     read_claude(&output.stdout).ok_or_else(|| explain(&output))?
 }
@@ -223,6 +285,26 @@ mod tests {
         let stdout = br#"{"type":"result","is_error":true,"result":"Not logged in"}"#;
         assert_eq!(read_claude(stdout), Some(Err("Not logged in".into())));
         assert_eq!(read_claude(b"not json"), None);
+    }
+
+    /// Calls the real tool with the user's subscription, so it only runs on demand:
+    /// `cargo test -- --ignored real_claude`.
+    #[tokio::test]
+    #[ignore]
+    async fn real_claude_code_streams() {
+        let workdir = std::env::temp_dir().join("madow-cli-test");
+        let mut ask = request(&[(Role::User, "Count from 1 to 5, one number per line.")]);
+        ask.model = "haiku".into();
+        let pieces = std::sync::Mutex::new(Vec::new());
+        let reply = stream(ProviderKind::ClaudeCode, &ask, &workdir, &|piece| {
+            pieces.lock().unwrap().push(piece.to_owned())
+        })
+        .await
+        .unwrap();
+        let pieces = pieces.lock().unwrap();
+        assert!(!pieces.is_empty());
+        assert_eq!(pieces.concat().trim(), reply.text.trim());
+        assert!(reply.text.contains('5'), "{reply:?}");
     }
 
     /// Calls the real tool with the user's subscription, so it only runs on demand:

@@ -94,6 +94,50 @@ pub async fn complete(
     }
 }
 
+/// Called with each piece of text as the model writes it.
+pub type OnDelta<'a> = &'a (dyn Fn(&str) + Send + Sync);
+
+/// Like `complete`, handing the answer over piece by piece while it is being written.
+pub async fn stream(
+    provider: &Provider,
+    key: Option<&str>,
+    request: &Request,
+    workdir: &Path,
+    on_delta: OnDelta<'_>,
+) -> Outcome<Reply> {
+    match provider.kind {
+        ProviderKind::Anthropic => {
+            let key = key.ok_or("This provider has no API key yet.")?;
+            anthropic::stream(client(), &provider.base_url, key, request, on_delta).await
+        }
+        ProviderKind::OpenaiCompat => {
+            openai_compat::stream(client(), &provider.base_url, key, request, on_delta).await
+        }
+        ProviderKind::ClaudeCode | ProviderKind::Codex => {
+            cli::stream(provider.kind, request, workdir, on_delta).await
+        }
+    }
+}
+
+/// Reads an answer sent as a stream of events, calling `on_data` with the payload of each.
+async fn events(response: &mut reqwest::Response, mut on_data: impl FnMut(&str)) -> Outcome<()> {
+    let mut buffer: Vec<u8> = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(unreachable)? {
+        buffer.extend_from_slice(&chunk);
+        // Whole lines only: a character cut in two by the network waits for its other half.
+        while let Some(end) = buffer.iter().position(|byte| *byte == b'\n') {
+            let line: Vec<u8> = buffer.drain(..=end).collect();
+            if let Some(data) = String::from_utf8_lossy(&line)
+                .trim_end()
+                .strip_prefix("data:")
+            {
+                on_data(data.trim_start());
+            }
+        }
+    }
+    Ok(())
+}
+
 /// The models the provider offers, to choose from. The user can always type another name.
 pub async fn models(provider: &Provider, key: Option<&str>) -> Outcome<Vec<String>> {
     let mut models = match provider.kind {

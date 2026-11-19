@@ -1,6 +1,6 @@
 //! The OpenAI Chat Completions protocol, spoken by most services and local servers.
 
-use super::{Outcome, Reply, Request, failure, unreachable};
+use super::{OnDelta, Outcome, Reply, Request, events, failure, unreachable};
 use serde_json::{Value, json};
 
 fn url(base: &str, path: &str) -> Outcome<String> {
@@ -18,6 +18,68 @@ fn authorized(builder: reqwest::RequestBuilder, key: Option<&str>) -> reqwest::R
     }
 }
 
+fn body(request: &Request, stream: bool) -> Value {
+    let mut messages = Vec::new();
+    if let Some(system) = &request.system {
+        messages.push(json!({ "role": "system", "content": system }));
+    }
+    messages.extend(request.messages.iter().map(|message| json!(message)));
+    // No token limit is sent: its name differs between services, and each has a sane default.
+    json!({ "model": request.model, "messages": messages, "stream": stream })
+}
+
+/// Like `complete`, calling `on_delta` with each piece of text as it arrives.
+pub async fn stream(
+    client: &reqwest::Client,
+    base: &str,
+    key: Option<&str>,
+    request: &Request,
+    on_delta: OnDelta<'_>,
+) -> Outcome<Reply> {
+    if request.model.is_empty() {
+        return Err("Choose a model for this provider.".into());
+    }
+    let mut response = authorized(client.post(url(base, "/chat/completions")?), key)
+        .json(&body(request, true))
+        .send()
+        .await
+        .map_err(unreachable)?;
+    if !response.status().is_success() {
+        return Err(failure(response).await);
+    }
+    let mut reply = Reply {
+        text: String::new(),
+        input_tokens: None,
+        output_tokens: None,
+    };
+    let mut cut = false;
+    events(&mut response, |data| {
+        // The stream ends with a literal `[DONE]`, which is not JSON.
+        let Ok(event) = serde_json::from_str::<Value>(data) else {
+            return;
+        };
+        let choice = &event["choices"][0];
+        if let Some(text) = choice["delta"]["content"]
+            .as_str()
+            .filter(|text| !text.is_empty())
+        {
+            reply.text.push_str(text);
+            on_delta(text);
+        }
+        cut |= choice["finish_reason"] == "length";
+        // Sent by some services only, in a last event.
+        if let Some(tokens) = event["usage"]["prompt_tokens"].as_u64() {
+            reply.input_tokens = Some(tokens);
+            reply.output_tokens = event["usage"]["completion_tokens"].as_u64();
+        }
+    })
+    .await?;
+    if cut {
+        return Err("The answer was cut off: it was too long.".into());
+    }
+    Ok(reply)
+}
+
 pub async fn complete(
     client: &reqwest::Client,
     base: &str,
@@ -27,16 +89,8 @@ pub async fn complete(
     if request.model.is_empty() {
         return Err("Choose a model for this provider.".into());
     }
-    let mut messages = Vec::new();
-    if let Some(system) = &request.system {
-        messages.push(json!({ "role": "system", "content": system }));
-    }
-    messages.extend(request.messages.iter().map(|message| json!(message)));
-
-    // No token limit is sent: its name differs between services, and each has a sane default.
-    let body = json!({ "model": request.model, "messages": messages });
     let response = authorized(client.post(url(base, "/chat/completions")?), key)
-        .json(&body)
+        .json(&body(request, false))
         .send()
         .await
         .map_err(unreachable)?;
@@ -135,6 +189,43 @@ mod tests {
             reply,
             Reply {
                 text: "Hi.".into(),
+                input_tokens: Some(9),
+                output_tokens: Some(2),
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn streams_the_text_piece_by_piece() {
+        let stream = [
+            r#"data: {"choices":[{"delta":{"role":"assistant","content":""}}]}"#,
+            r#"data: {"choices":[{"delta":{"content":"Hi"}}]}"#,
+            r#"data: {"choices":[{"delta":{"content":" there"},"finish_reason":"stop"}]}"#,
+            r#"data: {"choices":[],"usage":{"prompt_tokens":9,"completion_tokens":2}}"#,
+            "data: [DONE]",
+            "",
+        ]
+        .join("\n\n");
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .and(body_partial_json(json!({ "stream": true })))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(stream, "text/event-stream"))
+            .mount(&server)
+            .await;
+
+        let pieces = std::sync::Mutex::new(Vec::new());
+        let base = format!("{}/v1", server.uri());
+        let reply = super::stream(&reqwest::Client::new(), &base, None, &request(), &|piece| {
+            pieces.lock().unwrap().push(piece.to_owned())
+        })
+        .await
+        .unwrap();
+        assert_eq!(*pieces.lock().unwrap(), ["Hi", " there"]);
+        assert_eq!(
+            reply,
+            Reply {
+                text: "Hi there".into(),
                 input_tokens: Some(9),
                 output_tokens: Some(2),
             }

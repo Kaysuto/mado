@@ -1,5 +1,5 @@
 // The only door between the interface and the Rust core. Types mirror `src-tauri/src/items.rs`.
-import { invoke } from '@tauri-apps/api/core'
+import { Channel, invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { openUrl } from '@tauri-apps/plugin-opener'
 
@@ -64,6 +64,17 @@ export const INBOX_KINDS: Kind[] = ['mail', 'merge_request', 'notification', 'ti
 export const createTask = (title: string) => invoke<void>('create_task', { title })
 export const setTaskDone = (id: number, done: boolean) => invoke<void>('set_task_done', { id, done })
 export const deleteTask = (id: number) => invoke<void>('delete_task', { id })
+
+/**
+ * Click handler for text written by a model: its links open in the browser, never inside the
+ * app's own window.
+ */
+export function openLinks(event: MouseEvent) {
+  const link = (event.target as HTMLElement).closest('a')
+  if (!link) return
+  event.preventDefault()
+  openPage(link.href)
+}
 
 /** Opens a web page in the browser. Anything that is not an https address is ignored. */
 export function openPage(url: string | null) {
@@ -146,6 +157,21 @@ export const listModels = (providerId: string) => invoke<string[]>('list_models'
 export const ask = (requestId: string, providerId: string, request: AskRequest) =>
   invoke<Reply>('ask', { requestId, providerId, request })
 export const cancel = (requestId: string) => invoke<void>('cancel', { requestId })
+/**
+ * One turn of the chat, with the strong model. `onDelta` receives the answer piece by piece
+ * while it is being written; the promise resolves with the whole answer.
+ */
+export function chat(
+  requestId: string,
+  lang: 'en' | 'fr',
+  messages: ChatMessage[],
+  onDelta: (piece: string) => void,
+) {
+  const channel = new Channel<string>()
+  channel.onmessage = onDelta
+  return invoke<Reply>('chat', { requestId, lang, messages, onDelta: channel })
+}
+
 /** Writes today's briefing with the strong model. `done` is what was already ticked off today. */
 export const briefing = (requestId: string, lang: 'en' | 'fr', done: string[]) =>
   invoke<Reply>('briefing', { requestId, lang, done })

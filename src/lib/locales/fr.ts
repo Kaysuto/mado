@@ -54,6 +54,16 @@ export const fr: typeof en = {
     delete: 'Supprimer',
     groups: { doing: 'En cours', todo: 'À faire', done: 'Terminées' },
   },
+  assistant: {
+    title: 'Assistant',
+    close: "Fermer l'assistant",
+    fresh: 'Nouvelle',
+    empty: 'Posez une question sur votre journée : par quoi commencer, ce que dit un mail, quand vous êtes libre.',
+    placeholder: 'Posez une question…',
+    send: 'Envoyer',
+    stop: 'Arrêter',
+    thinking: 'Réflexion…',
+  },
   today: {
     hello: 'Bonjour',
     evening: 'Bonsoir',
