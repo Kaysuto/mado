@@ -288,6 +288,33 @@ async fn briefing(
     Ok(cancellable(&state, request_id, ANSWER_LIMIT, call).await?)
 }
 
+/// One turn of the chat: sends the conversation and hands the answer over piece by piece on
+/// `on_delta` while it is being written. Returns the whole answer. Cancellable like `ask`.
+#[tauri::command]
+async fn chat(
+    app: AppHandle,
+    request_id: String,
+    lang: assistant::Lang,
+    messages: Vec<llm::Message>,
+    on_delta: tauri::ipc::Channel<String>,
+) -> Result<llm::Reply> {
+    let state = app.state::<State>();
+    let (provider, request) = {
+        let db = state.db();
+        let (provider, model) = llm::chosen(&db, llm::Tier::Strong)?;
+        let request = assistant::chat_request(&db, lang, messages, chrono::Local::now(), model)?;
+        (provider, request)
+    };
+    let key = secrets::get(&provider.id)?;
+    let workdir = app.path().app_cache_dir()?.join("cli");
+    // A piece that cannot be delivered means the window is gone; the answer is still returned.
+    let deliver = |piece: &str| {
+        let _ = on_delta.send(piece.to_owned());
+    };
+    let call = llm::stream(&provider, key.as_deref(), &request, &workdir, &deliver);
+    Ok(cancellable(&state, request_id, ANSWER_LIMIT, call).await?)
+}
+
 /// Stops a call started by `ask`. Nothing happens if it has already ended.
 #[tauri::command]
 fn cancel(state: tauri::State<'_, State>, request_id: &str) {
@@ -361,6 +388,7 @@ pub fn run() {
             list_models,
             ask,
             briefing,
+            chat,
             cancel,
         ])
         .run(tauri::generate_context!())

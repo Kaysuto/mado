@@ -52,6 +52,16 @@ export const en = {
     delete: 'Delete',
     groups: { doing: 'In progress', todo: 'To do', done: 'Finished' },
   },
+  assistant: {
+    title: 'Assistant',
+    close: 'Close the assistant',
+    fresh: 'New',
+    empty: 'Ask about your day: what to start with, what a mail says, when you are free.',
+    placeholder: 'Ask something…',
+    send: 'Send',
+    stop: 'Stop',
+    thinking: 'Thinking…',
+  },
   today: {
     hello: 'Hello',
     evening: 'Good evening',
