@@ -9,6 +9,15 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Tauri(#[from] tauri::Error),
+    /// A failure already worded for the user (a provider's answer, a missing key…).
+    #[error("{0}")]
+    Message(String),
+}
+
+impl From<String> for Error {
+    fn from(message: String) -> Self {
+        Self::Message(message)
+    }
 }
 
 impl serde::Serialize for Error {
