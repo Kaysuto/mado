@@ -150,6 +150,10 @@ export const fr: typeof en = {
     toolsHint:
       'Chaque commande est lancée dans le dossier du projet. Laissez un champ vide pour « code . » et le terminal de votre système.',
     checks: { passed: 'CI réussie', failed: 'CI en échec', running: 'CI en cours' },
+    agents: "Sessions d'agents",
+    repositories: 'Dépôts',
+    states: { working: 'En cours', idle: 'En attente', done: 'Terminée' },
+    tool: 'Outil :',
   },
   calendar: {
     previous: 'Mois précédent',

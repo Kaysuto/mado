@@ -149,6 +149,10 @@ export const en = {
     toolsHint:
       'Each command runs in the folder of the project. Leave a field empty for "code ." and the terminal of your system.',
     checks: { passed: 'CI passed', failed: 'CI failed', running: 'CI running' },
+    agents: 'Agent sessions',
+    repositories: 'Repositories',
+    states: { working: 'Working', idle: 'Waiting', done: 'Finished' },
+    tool: 'Tool:',
   },
   calendar: {
     previous: 'Previous month',

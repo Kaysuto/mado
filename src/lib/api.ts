@@ -185,6 +185,26 @@ export const listRepositories = () => invoke<Repository[]>('list_repositories')
 export const pickFolder = () => invoke<string | null>('pick_folder')
 export const openRepository = (path: string, tool: Tool) => invoke<void>('open_repository', { path, tool })
 
+/** A coding-agent session on this machine (mirrors `src-tauri/src/agents.rs`). */
+export interface AgentSession {
+  engine: 'claude_code' | 'codex'
+  id: string
+  /** Name of the folder the agent works in. */
+  project: string
+  title: string
+  /** The last thing the agent wrote. */
+  last: string
+  /** The tool it called last, when that came after its last words. */
+  tool: string | null
+  /** Unix seconds. */
+  updatedAt: number
+  /** `idle`: it just stopped, finished or waiting for an answer. */
+  state: 'working' | 'idle' | 'done'
+}
+
+/** The agent sessions of the last hours, the latest first. */
+export const listAgentSessions = () => invoke<AgentSession[]>('list_agent_sessions')
+
 // ---------- sources (types mirror `src-tauri/src/connectors/mod.rs`) ----------
 
 export type SourceKind = 'github' | 'linear' | 'ical' | 'imap'
