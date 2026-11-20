@@ -4,13 +4,15 @@
   import Focus from './Focus.svelte'
   import Settings from './Settings.svelte'
   import StatusBar from './StatusBar.svelte'
-  import { getSetting, setSetting } from './lib/api'
+  import { type Item, getSetting, setSetting } from './lib/api'
   import { i18n, restoreLocale } from './lib/i18n.svelte'
+  import { takeNote } from './lib/notes.svelte'
   import { SPACES, type Space } from './lib/spaces'
   import Calendar from './spaces/Calendar.svelte'
   import Code from './spaces/Code.svelte'
   import Inbox from './spaces/Inbox.svelte'
   import News from './spaces/News.svelte'
+  import Notes from './spaces/Notes.svelte'
   import Review from './spaces/Review.svelte'
   import Tasks from './spaces/Tasks.svelte'
   import Today from './spaces/Today.svelte'
@@ -32,6 +34,9 @@
     view = next
     void setSetting('view', next)
   }
+
+  /** Opens the note about an item in the Notes space, starting it when there is none. */
+  const note = (item: Item) => takeNote(item).then(() => show('notes'))
 
   function onkeydown(event: KeyboardEvent) {
     const space = SPACES[Number(event.key) - 1]
@@ -96,15 +101,17 @@
     {#if view === 'today'}
       <Today onshow={show} />
     {:else if view === 'inbox'}
-      <Inbox onsettings={() => show('settings')} />
+      <Inbox onsettings={() => show('settings')} onnote={note} />
     {:else if view === 'calendar'}
-      <Calendar />
+      <Calendar onnote={note} />
     {:else if view === 'tasks'}
-      <Tasks />
+      <Tasks onnote={note} />
     {:else if view === 'code'}
       <Code />
     {:else if view === 'news'}
       <News onsettings={() => show('settings')} />
+    {:else if view === 'notes'}
+      <Notes />
     {:else if view === 'review'}
       <Review onsettings={() => show('settings')} />
     {:else if view === 'settings'}

@@ -124,6 +124,8 @@ pub struct Query {
     /// Unix seconds. Keeps what is still going on at `since`, and what starts before `until`.
     pub since: Option<i64>,
     pub until: Option<i64>,
+    /// Keeps the notes written about the item with this id.
+    pub about: Option<i64>,
     pub limit: Option<u32>,
 }
 
@@ -239,6 +241,45 @@ pub fn create_local(conn: &Connection, kind: Kind, title: &str) -> Result<i64> {
         params![LOCAL_SOURCE, kind, title, now()],
     )?;
     Ok(conn.last_insert_rowid())
+}
+
+/// Starts a note, about an item when `about` is one that exists. What the note is about is
+/// kept inside it (`meta.about`: id, kind, title and page), so that it still says so once a
+/// sync has taken the item away. A note with no title of its own takes the item's.
+pub fn create_note(conn: &Connection, title: &str, about: Option<i64>) -> Result<i64> {
+    let about = match about {
+        Some(id) => get(conn, id)?,
+        None => None,
+    };
+    let title = match (title.trim(), &about) {
+        ("", Some(item)) => &item.title,
+        (title, _) => title,
+    };
+    let id = create_local(conn, Kind::Note, title)?;
+    if let Some(item) = &about {
+        let meta = json!({ "about": {
+            "id": item.id, "kind": item.kind, "title": item.title, "url": item.url,
+        } });
+        conn.execute(
+            "UPDATE items SET meta = ?2 WHERE id = ?1",
+            params![id, meta.to_string()],
+        )?;
+    }
+    Ok(id)
+}
+
+/// Keeps what the user wrote in one of their notes. Its date becomes the time of the save:
+/// the note written last comes first. A note that is gone is an error, not a silent loss.
+pub fn save_note(conn: &Connection, id: i64, title: &str, body: &str) -> Result<()> {
+    let saved = conn.execute(
+        "UPDATE items SET title = ?4, body = ?5, occurred_at = ?6
+         WHERE id = ?1 AND source = ?2 AND kind = ?3",
+        params![id, LOCAL_SOURCE, Kind::Note, title.trim(), body, now()],
+    )?;
+    if saved == 0 {
+        return Err(Error::Message("This note no longer exists.".into()));
+    }
+    Ok(())
 }
 
 /// Adds an event of the user's own to the calendar. Like a task, it stays out of the inbox.
@@ -390,6 +431,10 @@ pub fn list(conn: &Connection, query: &Query) -> Result<Vec<Item>> {
     if let Some(until) = query.until {
         filters.push("occurred_at < ?".into());
         values.push(until.into());
+    }
+    if let Some(about) = query.about {
+        filters.push("json_extract(meta, '$.about.id') = ?".into());
+        values.push(about.into());
     }
     if !filters.is_empty() {
         sql.push_str(" WHERE ");
@@ -738,5 +783,73 @@ mod tests {
         };
         assert!(search("alpha").is_empty());
         assert_eq!(search("beta"), ["Beta"]);
+    }
+
+    #[test]
+    fn a_note_remembers_what_it_is_about_and_keeps_what_is_written_in_it() {
+        let mut conn = open_in_memory();
+        replace_source(
+            &mut conn,
+            "a",
+            &[item("1", Kind::Ticket, "Fix the login", 1)],
+        )
+        .unwrap();
+        let ticket = list(&conn, &Query::default()).unwrap()[0].id;
+
+        let about = create_note(&conn, " ", Some(ticket)).unwrap();
+        let free = create_note(&conn, "Ideas", None).unwrap();
+        // An item that does not exist leaves a note about nothing.
+        let lost = create_note(&conn, "Lost", Some(999)).unwrap();
+        let note = get(&conn, about).unwrap().unwrap();
+        assert_eq!(
+            (note.kind, note.title.as_str(), note.triage),
+            (Kind::Note, "Fix the login", Triage::Done)
+        );
+        assert_eq!(
+            note.meta["about"],
+            json!({ "id": ticket, "kind": "ticket", "title": "Fix the login", "url": null })
+        );
+        assert_eq!(get(&conn, lost).unwrap().unwrap().meta, json!({}));
+
+        let notes_about = |id| Query {
+            kinds: vec![Kind::Note],
+            about: Some(id),
+            ..Query::default()
+        };
+        assert_eq!(titles(&conn, notes_about(ticket)), ["Fix the login"]);
+        assert!(titles(&conn, notes_about(free)).is_empty());
+
+        save_note(&conn, about, " Login plan ", "Check the **token** first.").unwrap();
+        let note = get(&conn, about).unwrap().unwrap();
+        assert_eq!(
+            (note.title.as_str(), note.body.as_str()),
+            ("Login plan", "Check the **token** first.")
+        );
+        // The note says what it was about even after a sync took the ticket away.
+        replace_source(&mut conn, "a", &[]).unwrap();
+        assert_eq!(titles(&conn, notes_about(ticket)), ["Login plan"]);
+        // What is written in a note is found by the search.
+        let found = Query {
+            search: "token".into(),
+            ..Query::default()
+        };
+        assert_eq!(titles(&conn, found), ["Login plan"]);
+    }
+
+    #[test]
+    fn only_a_note_of_the_user_can_be_saved() {
+        let mut conn = open_in_memory();
+        replace_source(&mut conn, "a", &[item("1", Kind::Note, "From a source", 1)]).unwrap();
+        let foreign = list(&conn, &Query::default()).unwrap()[0].id;
+        let task = create_local(&conn, Kind::Task, "Call the bank").unwrap();
+        let note = create_note(&conn, "Mine", None).unwrap();
+        delete_local(&conn, note).unwrap();
+
+        for id in [foreign, task, note] {
+            let error = save_note(&conn, id, "Changed", "text").unwrap_err();
+            assert_eq!(error.to_string(), "This note no longer exists.");
+        }
+        let untouched = titles(&conn, Query::default());
+        assert!(!untouched.contains(&"Changed".to_owned()), "{untouched:?}");
     }
 }

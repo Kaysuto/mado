@@ -14,6 +14,7 @@ Aperçu : Madow s'utilise au quotidien mais reste jeune, et des choses bougeront
 - **Agenda** : vos agendas par mois, et de nouveaux événements écrits en langage naturel.
 - **Code** : vos dépôts git avec leur état, leurs demandes de fusion, tickets et alertes de sécurité, et les sessions d'agents de code qui tournent sur votre machine. Lancez un agent sur un ticket, dans un terminal où vous le voyez travailler.
 - **Veille** : les articles des flux que vous suivez, à lire maintenant, plus tard ou jamais.
+- **Notes** : des notes en Markdown, libres ou rattachées à une tâche, un ticket, un mail ou un événement, retrouvées par la recherche.
 - **Bilan** : le temps de focus par projet, vos commits, et un bilan écrit du jour ou de la semaine.
 - **Assistant** : un chat qui connaît votre journée, avec son historique.
 - **Focus** : un chrono lancé depuis n'importe quel élément.

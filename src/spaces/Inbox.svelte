@@ -24,7 +24,7 @@
   import { relativeTime } from '../lib/time'
   import Reply from './Reply.svelte'
 
-  let { onsettings }: { onsettings: () => void } = $props()
+  let { onsettings, onnote }: { onsettings: () => void; onnote: (item: Item) => Promise<void> } = $props()
 
   let triage = $state<Triage>('inbox')
   let search = $state('')
@@ -203,6 +203,9 @@
             {i18n.t.focus.on}
           </button>
         {/if}
+        <button class="btn" onclick={() => onnote(item).catch(cause => (actionError = String(cause)))}>
+          {i18n.t.notes.take}
+        </button>
         {#if canReply(item) && replying?.id !== item.id}
           <button
             class="btn"

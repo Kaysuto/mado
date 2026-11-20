@@ -49,6 +49,8 @@ export interface ItemQuery {
   /** Unix seconds: keeps what is still going on at `since` and what starts before `until`. */
   since?: number
   until?: number
+  /** Keeps the notes written about the item with this id. */
+  about?: number
   limit?: number
 }
 
@@ -69,7 +71,17 @@ export const INBOX_KINDS: Kind[] = ['mail', 'merge_request', 'notification', 'ti
 
 export const createTask = (title: string) => invoke<void>('create_task', { title })
 export const setTaskDone = (id: number, done: boolean) => invoke<void>('set_task_done', { id, done })
-/** Deletes something created in Madow: a task or an event. */
+/** What a note is about (its `meta.about`), kept in the note: the item itself may be gone. */
+export interface NoteSubject {
+  id: number
+  kind: Kind
+  title: string
+  url: string | null
+}
+/** Starts a note, about the item with the id `about` when given, and gives the note's id. */
+export const createNote = (title: string, about?: number) => invoke<number>('create_note', { title, about })
+export const saveNote = (id: number, title: string, body: string) => invoke<void>('save_note', { id, title, body })
+/** Deletes something created in Madow: a task, an event or a note. */
 export const deleteLocal = (id: number) => invoke<void>('delete_local', { id })
 
 /**

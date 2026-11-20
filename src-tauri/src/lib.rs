@@ -101,7 +101,23 @@ fn set_task_done(app: AppHandle, id: i64, done: bool) -> Result<()> {
     Ok(())
 }
 
-/// Deletes something the user created in Madow: a task or an event.
+/// Starts a note, about an item when `about` is given, and gives its id for the interface to
+/// open it.
+#[tauri::command]
+fn create_note(app: AppHandle, title: &str, about: Option<i64>) -> Result<i64> {
+    let id = items::create_note(&app.state::<State>().db(), title, about)?;
+    app.emit(sync::ITEMS_CHANGED, ())?;
+    Ok(id)
+}
+
+#[tauri::command]
+fn save_note(app: AppHandle, id: i64, title: &str, body: &str) -> Result<()> {
+    items::save_note(&app.state::<State>().db(), id, title, body)?;
+    app.emit(sync::ITEMS_CHANGED, ())?;
+    Ok(())
+}
+
+/// Deletes something the user created in Madow: a task, an event or a note.
 #[tauri::command]
 fn delete_local(app: AppHandle, id: i64) -> Result<()> {
     items::delete_local(&app.state::<State>().db(), id)?;
@@ -701,6 +717,8 @@ pub fn run() {
             sync_now,
             create_task,
             set_task_done,
+            create_note,
+            save_note,
             delete_local,
             create_event,
             event_page,
