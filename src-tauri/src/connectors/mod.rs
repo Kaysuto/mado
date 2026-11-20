@@ -6,8 +6,13 @@ mod github;
 mod ical;
 mod imap;
 mod linear;
+mod smtp;
 
-use crate::{error::Result, items::NewItem, secrets, settings};
+use crate::{
+    error::Result,
+    items::{Item, NewItem},
+    secrets, settings,
+};
 use async_trait::async_trait;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -30,6 +35,18 @@ pub trait Connector: Send + Sync {
     /// Does something to an item in the source itself. Sources list what they can do in the
     /// item's `meta.actions`; the others refuse.
     async fn act(&self, _external_id: &str, _action: Action) -> std::result::Result<(), String> {
+        Err("This source cannot do that.".into())
+    }
+
+    /// The whole text of an item, for sources that only store the start of it. `None` when
+    /// the stored body is all there is.
+    async fn full_text(&self, _external_id: &str) -> std::result::Result<Option<String>, String> {
+        Ok(None)
+    }
+
+    /// Sends the user's answer to an item. Sources that can do it list "reply" in the item's
+    /// `meta.actions`; the others refuse.
+    async fn reply(&self, _item: &Item, _text: &str) -> std::result::Result<(), String> {
         Err("This source cannot do that.".into())
     }
 }

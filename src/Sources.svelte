@@ -17,6 +17,13 @@
   let host = $state('')
   let port = $state(993)
   let username = $state('')
+  let smtpHost = $state('')
+  let smtpPort = $state(465)
+
+  /** Most services name the server that sends after the one that reads. */
+  function suggestSmtp() {
+    if (host.trim().startsWith('imap.')) smtpHost = `smtp.${host.trim().slice(5)}`
+  }
   let busy = $state(false)
   let error = $state('')
   let armed = $state('') // id of the source whose removal waits for a second click
@@ -49,7 +56,10 @@
 
   const add = () =>
     guard(async () => {
-      const options = kind === 'imap' ? { host: host.trim(), port, username: username.trim() } : {}
+      const options =
+        kind === 'imap'
+          ? { host: host.trim(), port, username: username.trim(), smtpHost: smtpHost.trim(), smtpPort }
+          : {}
       await saveSource({ id: crypto.randomUUID(), kind, name: name.trim(), options }, token)
       token = ''
       await syncNow()
@@ -112,6 +122,7 @@
       list="mail-servers"
       required
       bind:value={host}
+      onchange={suggestSmtp}
     />
     <datalist id="mail-servers">
       {#each MAIL_SERVERS as server (server)}
@@ -135,6 +146,21 @@
       aria-label={i18n.t.sources.user}
       required
       bind:value={username}
+    />
+    <input
+      class="field wide"
+      placeholder={i18n.t.sources.smtp}
+      aria-label={i18n.t.sources.smtp}
+      bind:value={smtpHost}
+    />
+    <input
+      class="field port"
+      type="number"
+      min="1"
+      max="65535"
+      aria-label={i18n.t.sources.smtpPort}
+      required
+      bind:value={smtpPort}
     />
   {/if}
   <input
@@ -204,9 +230,5 @@
   .error {
     color: var(--danger);
     font-size: 13px;
-  }
-  .btn:disabled {
-    opacity: 0.45;
-    cursor: default;
   }
 </style>
