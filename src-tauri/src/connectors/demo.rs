@@ -153,8 +153,12 @@ impl Connector for Demo {
                             "identifier": "APP-77",
                             "stateType": "started",
                             "project": "Desktop app",
+                            "repository": "acme/desktop",
                         }),
-                        Kind::MergeRequest => json!({ "repository": "acme/sync" }),
+                        Kind::MergeRequest => json!({
+                            "repository": "acme/sync",
+                            "checks": "SUCCESS",
+                        }),
                         Kind::Event => json!({
                             "allDay": false,
                             "location": "Video call",

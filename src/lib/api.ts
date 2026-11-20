@@ -156,6 +156,35 @@ export type ItemAction = (typeof ITEM_ACTIONS)[number]
 
 export const actOnItem = (id: number, action: ItemAction) => invoke<void>('act_on_item', { id, action })
 
+// ---------- code (types mirror `src-tauri/src/code.rs`) ----------
+
+/** A git repository on this machine. */
+export interface Repository {
+  /** Empty for a sample repository, which is nowhere on disk. */
+  path: string
+  name: string
+  /** The folder it sits in, when it is not itself one of the chosen folders. */
+  group: string | null
+  /** Empty when no branch is checked out. */
+  branch: string
+  /** Files changed or new since the last commit. */
+  changes: number
+  ahead: number
+  behind: number
+  /** Unix seconds. */
+  lastCommit: number | null
+  /** `owner/name` of the remote it is pushed to. */
+  remote: string | null
+}
+
+export type Tool = 'editor' | 'terminal'
+
+/** The repositories of the folders kept in the `code.folders` setting. */
+export const listRepositories = () => invoke<Repository[]>('list_repositories')
+/** Asks the user for a folder with the system's dialog. Null when they close it. */
+export const pickFolder = () => invoke<string | null>('pick_folder')
+export const openRepository = (path: string, tool: Tool) => invoke<void>('open_repository', { path, tool })
+
 // ---------- sources (types mirror `src-tauri/src/connectors/mod.rs`) ----------
 
 export type SourceKind = 'github' | 'linear' | 'ical' | 'imap'

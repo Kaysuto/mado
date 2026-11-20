@@ -134,6 +134,23 @@ export const fr: typeof en = {
       'Le bilan raconte ce que vous avez fait et ce qui vient ensuite, à partir de votre temps de focus, de vos tâches cochées, de votre agenda et de vos tickets.',
     noModel: "Choisissez un modèle d'IA dans les réglages pour faire rédiger votre bilan.",
   },
+  code: {
+    refresh: 'Actualiser',
+    folders: 'Dossiers',
+    addFolder: 'Ajouter un dossier',
+    remove: 'Retirer',
+    empty:
+      'Choisissez un dossier qui contient vos projets : Madow y liste les dépôts git trouvés, jusqu’à deux niveaux plus bas.',
+    none: 'Aucun dépôt git dans ces dossiers.',
+    changes: 'à committer',
+    ahead: 'à pousser',
+    behind: 'à récupérer',
+    editor: 'Éditeur',
+    terminal: 'Terminal',
+    toolsHint:
+      'Chaque commande est lancée dans le dossier du projet. Laissez un champ vide pour « code . » et le terminal de votre système.',
+    checks: { passed: 'CI réussie', failed: 'CI en échec', running: 'CI en cours' },
+  },
   calendar: {
     previous: 'Mois précédent',
     next: 'Mois suivant',
