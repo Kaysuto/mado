@@ -1,5 +1,6 @@
 mod assistant;
 mod chats;
+mod code;
 mod connectors;
 mod db;
 mod error;
@@ -172,6 +173,44 @@ async fn act_on_item(app: AppHandle, id: i64, action: connectors::Action) -> Res
     }
     app.emit(sync::ITEMS_CHANGED, ())?;
     Ok(())
+}
+
+// ---------- code ----------
+
+/// The git repositories of the folders the user chose, with the sample ones when sample data
+/// is shown.
+#[tauri::command]
+async fn list_repositories(app: AppHandle) -> Result<Vec<code::Repository>> {
+    let (folders, samples) = {
+        let state = app.state::<State>();
+        let db = state.db();
+        (code::folders(&db)?, settings::flag(&db, settings::DEMO)?)
+    };
+    let mut repositories = code::list(&folders).await?;
+    if samples {
+        repositories.extend(code::samples());
+    }
+    Ok(repositories)
+}
+
+/// Lets the user pick a folder with the system's own dialog. `None` when they close it.
+// Not on the main thread, which the dialog needs free while this waits for it.
+#[tauri::command(async)]
+fn pick_folder(app: AppHandle) -> Option<String> {
+    use tauri_plugin_dialog::DialogExt;
+    let folder = app
+        .dialog()
+        .file()
+        .blocking_pick_folder()?
+        .into_path()
+        .ok()?;
+    Some(folder.to_string_lossy().into_owned())
+}
+
+/// Opens a repository in the user's editor or terminal.
+#[tauri::command]
+fn open_repository(state: tauri::State<'_, State>, path: &str, tool: code::Tool) -> Result<()> {
+    code::open(&state.db(), path, tool)
 }
 
 // ---------- sources ----------
@@ -562,6 +601,7 @@ async fn cancellable<T>(
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         // A second launch brings the running window forward instead of opening another app.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -594,6 +634,9 @@ pub fn run() {
             log_focus,
             focus_total,
             act_on_item,
+            list_repositories,
+            pick_folder,
+            open_repository,
             list_sources,
             save_source,
             delete_source,

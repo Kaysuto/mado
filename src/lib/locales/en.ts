@@ -133,6 +133,23 @@ export const en = {
       'The review tells what you did and what comes next, from your focus time, your ticked tasks, your calendar and your tickets.',
     noModel: 'Choose an AI model in the settings to have your review written.',
   },
+  code: {
+    refresh: 'Refresh',
+    folders: 'Folders',
+    addFolder: 'Add a folder',
+    remove: 'Remove',
+    empty:
+      'Choose a folder that holds your projects: Madow lists the git repositories it finds there, up to two levels down.',
+    none: 'No git repository in these folders.',
+    changes: 'uncommitted',
+    ahead: 'to push',
+    behind: 'to pull',
+    editor: 'Editor',
+    terminal: 'Terminal',
+    toolsHint:
+      'Each command runs in the folder of the project. Leave a field empty for "code ." and the terminal of your system.',
+    checks: { passed: 'CI passed', failed: 'CI failed', running: 'CI running' },
+  },
   calendar: {
     previous: 'Previous month',
     next: 'Next month',

@@ -7,6 +7,7 @@
   import { i18n, restoreLocale } from './lib/i18n.svelte'
   import { SPACES, type Space } from './lib/spaces'
   import Calendar from './spaces/Calendar.svelte'
+  import Code from './spaces/Code.svelte'
   import Inbox from './spaces/Inbox.svelte'
   import Review from './spaces/Review.svelte'
   import Tasks from './spaces/Tasks.svelte'
@@ -98,6 +99,8 @@
       <Calendar />
     {:else if view === 'tasks'}
       <Tasks />
+    {:else if view === 'code'}
+      <Code />
     {:else if view === 'review'}
       <Review onsettings={() => show('settings')} />
     {:else if view === 'settings'}
