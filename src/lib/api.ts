@@ -130,6 +130,8 @@ export interface ReviewNumbers {
   }
   /** Titles of the user's own tasks ticked off over the period. */
   done: string[]
+  /** What the user committed over the period: the first line of each commit, by repository. */
+  commits: { repository: string; commits: string[] }[]
 }
 
 export const reviewNumbers = (period: Period) => invoke<ReviewNumbers>('review_numbers', { period })

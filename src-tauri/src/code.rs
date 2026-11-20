@@ -103,6 +103,60 @@ async fn describe(git: &Path, path: &Path, folders: &[PathBuf]) -> Repository {
     }
 }
 
+/// What the user committed in a repository over a period.
+#[derive(Debug, PartialEq, Serialize)]
+pub struct Work {
+    /// Name of the repository's folder.
+    pub repository: String,
+    /// The first line of each commit, the latest first.
+    pub commits: Vec<String>,
+}
+
+/// The commits the user made since `since` (Unix seconds) in the repositories of `folders`,
+/// on any branch. The user is whoever git commits as in each repository. Repositories
+/// without such a commit are left out, and so is everything when git is not installed.
+pub async fn commits(folders: &[PathBuf], since: i64) -> Vec<Work> {
+    let Ok(git) = which::which("git") else {
+        return Vec::new();
+    };
+    let paths = find(folders);
+    let read = paths.iter().map(async |path| {
+        let email = run(&git, path, &["config", "user.email"]).await;
+        let email = email.trim();
+        if email.is_empty() {
+            return None;
+        }
+        let author = format!("--author={email}");
+        let since = format!("--since={since}");
+        let log = [
+            "log",
+            "--all",
+            "--no-merges",
+            "--fixed-strings",
+            "--format=%s",
+            "-n",
+            "50",
+            author.as_str(),
+            since.as_str(),
+        ];
+        let commits: Vec<String> = run(&git, path, &log)
+            .await
+            .lines()
+            .map(str::to_owned)
+            .collect();
+        (!commits.is_empty()).then(|| Work {
+            repository: path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into(),
+            commits,
+        })
+    });
+    let work = futures::future::join_all(read).await;
+    work.into_iter().flatten().collect()
+}
+
 /// What a git command prints; nothing when it fails (no commit yet, no remote…).
 async fn run(git: &Path, folder: &Path, arguments: &[&str]) -> String {
     let mut command = tokio::process::Command::new(git);
@@ -336,6 +390,55 @@ mod tests {
         assert_eq!(Tool::Editor.command(&conn).unwrap(), "code .");
         settings::set(&conn, "code.editor", &json!("zed .")).unwrap();
         assert_eq!(Tool::Editor.command(&conn).unwrap(), "zed .");
+    }
+
+    /// Runs the real `git` on a repository made for the test.
+    #[tokio::test]
+    async fn lists_what_the_user_committed_over_the_period() {
+        let root = scratch("commits");
+        let repository = root.join("app");
+        std::fs::create_dir_all(&repository).unwrap();
+        let git = |arguments: &[&str]| {
+            let done = std::process::Command::new("git")
+                .arg("-C")
+                .arg(&repository)
+                .args(arguments)
+                .output()
+                .unwrap();
+            assert!(done.status.success(), "{arguments:?}: {done:?}");
+        };
+        let commit = |email: &str, subject: &str| {
+            let author = format!("user.email={email}");
+            git(&[
+                "-c",
+                "user.name=Someone",
+                "-c",
+                &author,
+                "commit",
+                "--allow-empty",
+                "-m",
+                subject,
+            ]);
+        };
+        git(&["init", "--quiet"]);
+        git(&["config", "user.email", "me@example.com"]);
+        commit("me@example.com", "Add the retry");
+        commit("someone.else@example.com", "Fix a typo");
+        commit(
+            "me@example.com",
+            "Cover the retry with a test\n\nWith a body.",
+        );
+
+        let mine = commits(std::slice::from_ref(&root), now() - 3600).await;
+        assert_eq!(
+            mine,
+            [Work {
+                repository: "app".into(),
+                commits: vec!["Cover the retry with a test".into(), "Add the retry".into()],
+            }]
+        );
+        assert_eq!(commits(std::slice::from_ref(&root), now() + 3600).await, []);
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     /// Runs the real `git` on the checkout this code is built from, when it is one.

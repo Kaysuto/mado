@@ -120,6 +120,7 @@ export const en = {
     focus: 'Focus time',
     worked: 'Things worked on',
     ticked: 'Tasks ticked off',
+    commits: 'Commits',
     perDay: 'Focus per day',
     byProject: 'Time by project',
     noProject: 'No project',
