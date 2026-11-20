@@ -246,6 +246,23 @@ export function chat(
   return invoke<Reply>('chat', { requestId, lang, messages, onDelta: pieces(onDelta) })
 }
 
+/** A conversation with the assistant, as the history lists it. `updatedAt` is Unix seconds. */
+export interface ConversationSummary {
+  id: number
+  /** The start of the first question. */
+  title: string
+  updatedAt: number
+}
+
+/** The conversations kept, the one touched last first. */
+export const listConversations = () => invoke<ConversationSummary[]>('list_conversations')
+/** The messages of a conversation, or null when it no longer exists. */
+export const conversation = (id: number) => invoke<ChatMessage[] | null>('conversation', { id })
+/** Keeps a conversation as it stands and resolves to its id; `id` is null for a new one. */
+export const saveConversation = (id: number | null, messages: ChatMessage[]) =>
+  invoke<number>('save_conversation', { id, messages })
+export const deleteConversation = (id: number) => invoke<void>('delete_conversation', { id })
+
 /** A reply being written to a mail, kept so it survives a restart. */
 export interface SavedReply {
   id: number
