@@ -1182,8 +1182,12 @@ mod tests {
         )
         .unwrap();
 
+        let commits = [code::Work {
+            repository: "parser-lib".into(),
+            commits: vec!["Speed up the tokenizer on long lines".into()],
+        }];
         let request =
-            review_request(&conn, Lang::Fr, Period::Day, now, "haiku".into(), &[]).unwrap();
+            review_request(&conn, Lang::Fr, Period::Day, now, "haiku".into(), &commits).unwrap();
         let provider = llm::Provider {
             id: "claude".into(),
             kind: llm::ProviderKind::ClaudeCode,
@@ -1199,6 +1203,8 @@ mod tests {
             assert!(reply.text.contains(heading), "{}", reply.text);
         }
         assert!(reply.text.contains("45 min"), "{}", reply.text);
+        // The commit of the day is part of what was done.
+        assert!(reply.text.contains("parser-lib"), "{}", reply.text);
     }
 
     /// Sorts the sample mails with the real tool and the user's subscription, so it only runs
