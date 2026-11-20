@@ -7,6 +7,8 @@
   import { relativeTime } from '../lib/time'
   import Launch from './Launch.svelte'
 
+  let { onnote }: { onnote: (item: Item) => Promise<void> } = $props()
+
   let items = $state<Item[]>([])
   let title = $state('')
   let error = $state('')
@@ -86,6 +88,7 @@
           {#if item.kind === 'ticket' && launching !== item.id}
             <button class="btn" onclick={() => (launching = item.id)}>{i18n.t.agent.on}</button>
           {/if}
+          <button class="btn" onclick={() => guard(() => onnote(item))}>{i18n.t.notes.take}</button>
           {#if item.url}
             <button class="btn" onclick={() => openPage(item.url)}>{i18n.t.open}</button>
           {/if}

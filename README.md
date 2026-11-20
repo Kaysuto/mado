@@ -14,6 +14,7 @@ Early preview: Madow is usable day to day but still young, and things will move 
 - **Calendar**: your calendars by month, and new events written in plain words.
 - **Code**: your git repositories with their state, their merge requests, tickets and security alerts, and the coding-agent sessions running on your machine. Start an agent on a ticket, in a terminal where you see it work.
 - **News**: the articles of the feeds you follow, to read now, later or never.
+- **Notes**: notes in Markdown, on their own or about a task, a ticket, a mail or an event, found by the search.
 - **Review**: focus time by project, your commits, and a written review of the day or the week.
 - **Assistant**: a chat that knows your day, with its history.
 - **Focus**: a stopwatch started from any item.

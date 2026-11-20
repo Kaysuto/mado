@@ -5,6 +5,8 @@
   import { i18n } from '../lib/i18n.svelte'
   import NewEvent from './NewEvent.svelte'
 
+  let { onnote }: { onnote: (item: Item) => Promise<void> } = $props()
+
   const today = startOfDay(new Date())
   let month = $state(new Date(today.getFullYear(), today.getMonth(), 1))
   let selected = $state(today)
@@ -135,6 +137,9 @@
           {#if typeof event.meta.link === 'string'}
             <button class="btn join" onclick={() => openPage(event.meta.link as string)}>{i18n.t.calendar.join}</button>
           {/if}
+          <button class="btn" onclick={() => onnote(event).catch(cause => (error = String(cause)))}>
+            {i18n.t.notes.take}
+          </button>
           {#if event.url}
             <button class="btn" onclick={() => openPage(event.url)}>{i18n.t.open}</button>
           {/if}
