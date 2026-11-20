@@ -12,11 +12,14 @@ Early preview: Madow is usable day to day but still young, and things will move 
 - **Inbox**: mail, review requests, notifications and alerts in one list, sorted by your fast model. Answer a mail with a draft you edit before sending.
 - **Tasks**: your own tasks and the tickets of your trackers together.
 - **Calendar**: your calendars by month, and new events written in plain words.
-- **Review**: focus time by project, and a written review of the day or the week.
+- **Code**: your git repositories with their state, their merge requests, tickets and security alerts, and the coding-agent sessions running on your machine. Start an agent on a ticket, in a terminal where you see it work.
+- **News**: the articles of the feeds you follow, to read now, later or never.
+- **Review**: focus time by project, your commits, and a written review of the day or the week.
 - **Assistant**: a chat that knows your day, with its history.
 - **Focus**: a stopwatch started from any item.
+- **Status bar**: processor, memory and disk, the agents at work, and the servers that stopped answering.
 
-Sources so far: any mailbox (IMAP/SMTP), calendars by iCal link, GitHub and Linear. Models: Claude Code or Codex with your subscription, an API key (Anthropic or any OpenAI-compatible service), or a local model. Sample data is built in, to look around before connecting anything.
+Sources so far: any mailbox (IMAP/SMTP), calendars by iCal link, GitHub and GitLab, Linear and Jira, RSS and Atom feeds, and servers to watch. Models: Claude Code or Codex with your subscription, an API key (Anthropic or any OpenAI-compatible service), or a local model. Sample data is built in, to look around before connecting anything.
 
 Your data stays on your machine. The model never gets a tool on it: Madow reads your sources itself and hands over text, and nothing is sent or created without your click.
 
