@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte'
+  import { onMount, tick, untrack } from 'svelte'
   import {
     type ChatMessage,
     type ConversationSummary,
@@ -13,6 +13,7 @@
     saveConversation,
     setSetting,
   } from './lib/api'
+  import { asked } from './lib/assistant.svelte'
   import { i18n } from './lib/i18n.svelte'
   import { markdown } from './lib/markdown'
   import { relativeTime } from './lib/time'
@@ -27,18 +28,35 @@
   let partial = $state('') // what has been written of it so far
   let error = $state('')
   let stopped = false
+  let ready = $state(false) // the conversation left open has been read
   let list = $state<HTMLElement>()
   let input = $state<HTMLTextAreaElement>()
 
   onMount(async () => {
     // The app reopens on the conversation it was left on.
-    const current = await getSetting<number>('chat.current')
-    const saved = typeof current === 'number' ? await conversation(current) : null
-    if (saved) {
-      id = current
-      messages = saved
+    try {
+      const current = await getSetting<number>('chat.current')
+      const saved = typeof current === 'number' ? await conversation(current) : null
+      if (saved) {
+        id = current
+        messages = saved
+      }
+    } finally {
+      ready = true
     }
     input?.focus()
+  })
+
+  // A question asked from the launcher starts a conversation of its own, once the answer
+  // being written, if any, is finished.
+  $effect(() => {
+    if (!ready || !asked.question || writing) return
+    untrack(() => {
+      reset()
+      draft = asked.question
+      asked.question = ''
+      void send()
+    })
   })
 
   // Keeps the latest text in view while it is being written.

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte'
+  import { onMount, tick, untrack } from 'svelte'
   import {
     type Item,
     type NoteSubject,
@@ -27,6 +27,7 @@
   let confirming = $state(false) // deleting takes a second click
   let titleField = $state<HTMLInputElement>()
   let pending: ReturnType<typeof setTimeout> | undefined
+  let ready = false // the first note has been opened
   const now = Date.now() / 1000
 
   const subjectOf = (note: Item) => (note.meta.about ?? null) as NoteSubject | null
@@ -99,9 +100,17 @@
       await deleteLocal(id)
     })
 
+  // Follows a note chosen from the launcher while the space is shown.
+  $effect(() => {
+    const id = notes.selected
+    if (ready && id !== null && id !== untrack(() => draft?.id)) void load().then(() => open(id))
+  })
+
   onMount(() => {
     // Reopens on the note left open, else on the one written last.
-    void load().then(() => open(notes.selected ?? list[0]?.id ?? null))
+    void load()
+      .then(() => open(notes.selected ?? list[0]?.id ?? null))
+      .then(() => (ready = true))
     const listening = onItemsChanged(load)
     return () => {
       void flush()
