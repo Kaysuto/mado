@@ -1,8 +1,10 @@
 //! Items: the single shape every source is translated into (a mail, a ticket, an event…).
 
-use crate::error::Result;
+use crate::error::{Error, Result};
+use chrono::{Days, Local, NaiveDate, NaiveDateTime, TimeZone};
 use rusqlite::{Connection, Row, params, params_from_iter, types::Value};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Source name of what the user creates in Madow itself. Never removed by a sync.
@@ -125,6 +127,47 @@ pub struct Query {
     pub limit: Option<u32>,
 }
 
+/// How the interface writes a date and time: local, to the minute.
+pub const LOCAL_TIME: &str = "%Y-%m-%dT%H:%M";
+
+/// An event the user is about to add, with its dates as the interface edits them: local
+/// time (`2026-11-26T14:00`), or days (`2026-11-26`) for a whole-day event, whose `end` is
+/// its last day.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct EventDraft {
+    pub title: String,
+    pub start: String,
+    pub end: String,
+    pub all_day: bool,
+    pub location: String,
+}
+
+impl EventDraft {
+    /// Start and end in local time. A whole-day event ends at the midnight after its last day.
+    pub fn span(&self) -> std::result::Result<(NaiveDateTime, NaiveDateTime), String> {
+        let (start, end) = if self.all_day {
+            let day = |text: &str| {
+                NaiveDate::parse_from_str(text, "%Y-%m-%d")
+                    .ok()?
+                    .and_hms_opt(0, 0, 0)
+            };
+            (
+                day(&self.start),
+                day(&self.end).and_then(|end| end.checked_add_days(Days::new(1))),
+            )
+        } else {
+            let time = |text: &str| NaiveDateTime::parse_from_str(text, LOCAL_TIME).ok();
+            (time(&self.start), time(&self.end))
+        };
+        match (start, end) {
+            (Some(start), Some(end)) if end > start => Ok((start, end)),
+            (Some(_), Some(_)) => Err("The event ends before it starts.".into()),
+            _ => Err("The event needs a start and an end.".into()),
+        }
+    }
+}
+
 pub fn now() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -194,6 +237,38 @@ pub fn create_local(conn: &Connection, kind: Kind, title: &str) -> Result<i64> {
         "INSERT INTO items (source, external_id, kind, title, state, triage, occurred_at, synced_at)
          VALUES (?1, lower(hex(randomblob(8))), ?2, ?3, 'todo', 'done', ?4, 0)",
         params![LOCAL_SOURCE, kind, title, now()],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+/// Adds an event of the user's own to the calendar. Like a task, it stays out of the inbox.
+pub fn create_local_event(conn: &Connection, event: &EventDraft) -> Result<i64> {
+    let title = event.title.trim();
+    if title.is_empty() {
+        return Err(Error::Message("An event needs a title.".into()));
+    }
+    let (start, end) = event.span()?;
+    let seconds = |time: NaiveDateTime| {
+        // An hour skipped by a clock change does not exist.
+        Local
+            .from_local_datetime(&time)
+            .earliest()
+            .map(|time| time.timestamp())
+            .ok_or_else(|| Error::Message("That hour does not exist on that day.".into()))
+    };
+    let meta = json!({ "allDay": event.all_day, "location": event.location.trim() });
+    conn.execute(
+        "INSERT INTO items (source, external_id, kind, title, state, triage,
+                            occurred_at, ends_at, meta, synced_at)
+         VALUES (?1, lower(hex(randomblob(8))), ?2, ?3, '', 'done', ?4, ?5, ?6, 0)",
+        params![
+            LOCAL_SOURCE,
+            Kind::Event,
+            title,
+            seconds(start)?,
+            seconds(end)?,
+            meta.to_string()
+        ],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -436,6 +511,67 @@ mod tests {
         };
         assert_eq!(titles(&conn, done), ["Mail"]);
         assert_eq!(titles(&conn, Query::default()), ["Ticket", "Mail"]);
+    }
+
+    fn draft(start: &str, end: &str, all_day: bool) -> EventDraft {
+        EventDraft {
+            title: " Lunch ".into(),
+            start: start.into(),
+            end: end.into(),
+            all_day,
+            location: "Bistro".into(),
+        }
+    }
+
+    #[test]
+    fn an_event_draft_gives_its_span_or_says_what_is_wrong() {
+        let at = |text: &str| NaiveDateTime::parse_from_str(text, LOCAL_TIME).unwrap();
+        assert_eq!(
+            draft("2026-11-26T12:30", "2026-11-26T13:30", false).span(),
+            Ok((at("2026-11-26T12:30"), at("2026-11-26T13:30")))
+        );
+        // A whole day ends at the midnight after its last day, across a month end too.
+        assert_eq!(
+            draft("2026-11-30", "2026-11-30", true).span(),
+            Ok((at("2026-11-30T00:00"), at("2026-12-01T00:00")))
+        );
+        assert!(
+            draft("2026-11-26T12:30", "2026-11-26T12:30", false)
+                .span()
+                .is_err()
+        );
+        assert!(draft("2026-11-27", "2026-11-26", true).span().is_err());
+        assert!(draft("2026-11-26", "2026-11-26", false).span().is_err());
+        assert!(draft("soon", "", true).span().is_err());
+    }
+
+    #[test]
+    fn a_local_event_is_stored_on_its_day_and_out_of_the_inbox() {
+        let conn = open_in_memory();
+        let id = create_local_event(&conn, &draft("2026-11-26T12:30", "2026-11-26T13:30", false))
+            .unwrap();
+        let event = get(&conn, id).unwrap().unwrap();
+        let local = |text: &str| {
+            Local
+                .from_local_datetime(&NaiveDateTime::parse_from_str(text, LOCAL_TIME).unwrap())
+                .earliest()
+                .unwrap()
+                .timestamp()
+        };
+        assert_eq!(event.title, "Lunch");
+        assert_eq!(event.kind, Kind::Event);
+        assert_eq!(event.triage, Triage::Done);
+        assert_eq!(event.occurred_at, local("2026-11-26T12:30"));
+        assert_eq!(event.ends_at, Some(local("2026-11-26T13:30")));
+        assert_eq!(event.meta, json!({ "allDay": false, "location": "Bistro" }));
+
+        let mut untitled = draft("2026-11-26", "2026-11-26", true);
+        untitled.title = "  ".into();
+        assert!(create_local_event(&conn, &untitled).is_err());
+        assert!(create_local_event(&conn, &draft("2026-11-27", "2026-11-26", true)).is_err());
+
+        delete_local(&conn, id).unwrap();
+        assert_eq!(get(&conn, id).unwrap(), None);
     }
 
     #[test]

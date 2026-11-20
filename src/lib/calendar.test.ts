@@ -1,6 +1,10 @@
 import { expect, test } from 'vitest'
 import type { Item } from './api'
-import { eventsOn, monthGrid } from './calendar'
+import { dayKey, eventsOn, monthGrid } from './calendar'
+
+test('a day is written the way date fields want it, in local time', () => {
+  expect(dayKey(new Date(2026, 0, 5, 23, 30))).toBe('2026-01-05')
+})
 
 function event(title: string, start: Date, end: Date | null, allDay = false): Item {
   return {

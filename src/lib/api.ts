@@ -69,7 +69,31 @@ export const INBOX_KINDS: Kind[] = ['mail', 'merge_request', 'notification', 'ti
 
 export const createTask = (title: string) => invoke<void>('create_task', { title })
 export const setTaskDone = (id: number, done: boolean) => invoke<void>('set_task_done', { id, done })
-export const deleteTask = (id: number) => invoke<void>('delete_task', { id })
+/** Deletes something created in Madow: a task or an event. */
+export const deleteLocal = (id: number) => invoke<void>('delete_local', { id })
+
+/**
+ * An event about to be added. Dates are local: `2026-11-26T14:00`, or `2026-11-26` for a
+ * whole-day event, whose `end` is its last day.
+ */
+export interface EventDraft {
+  title: string
+  start: string
+  end: string
+  allDay: boolean
+  location: string
+}
+
+/**
+ * Reads an event out of a sentence such as "lunch with Sam on Thursday at 12:30", with the
+ * fast model. Nothing is created. `requestId` stops it through `cancel`.
+ */
+export const draftEvent = (requestId: string, text: string) =>
+  invoke<EventDraft>('draft_event', { requestId, text })
+/** Adds the event to the calendar kept in Madow. */
+export const createEvent = (event: EventDraft) => invoke<void>('create_event', { event })
+/** The page of the user's online calendar that creates this event, when it has one. */
+export const eventPage = (event: EventDraft) => invoke<string | null>('event_page', { event })
 
 /**
  * Click handler for text written by a model: its links open in the browser, never inside the

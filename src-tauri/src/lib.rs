@@ -93,11 +93,30 @@ fn set_task_done(app: AppHandle, id: i64, done: bool) -> Result<()> {
     Ok(())
 }
 
+/// Deletes something the user created in Madow: a task or an event.
 #[tauri::command]
-fn delete_task(app: AppHandle, id: i64) -> Result<()> {
+fn delete_local(app: AppHandle, id: i64) -> Result<()> {
     items::delete_local(&app.state::<State>().db(), id)?;
     app.emit(sync::ITEMS_CHANGED, ())?;
     Ok(())
+}
+
+/// Adds an event of the user's own to the calendar kept in Madow.
+#[tauri::command]
+fn create_event(app: AppHandle, event: items::EventDraft) -> Result<()> {
+    items::create_local_event(&app.state::<State>().db(), &event)?;
+    app.emit(sync::ITEMS_CHANGED, ())?;
+    Ok(())
+}
+
+/// The page of the user's online calendar that creates this event, already filled in.
+/// `None` when none of their calendars has such a page.
+#[tauri::command]
+fn event_page(state: tauri::State<'_, State>, event: items::EventDraft) -> Result<Option<String>> {
+    event.span()?;
+    Ok(connectors::configured(&state.db())?
+        .iter()
+        .find_map(|connector| connector.event_page(&event)))
 }
 
 /// An item and the connector of the source it comes from.
@@ -368,6 +387,32 @@ async fn draft_reply(
     Ok(cancellable(&state, request_id, ANSWER_LIMIT, call).await?)
 }
 
+/// Reads a calendar event out of what the user typed, with the fast model. Nothing is
+/// created: the interface shows the event for the user to check. Cancellable like `ask`.
+#[tauri::command]
+async fn draft_event(
+    app: AppHandle,
+    request_id: String,
+    text: String,
+) -> Result<items::EventDraft> {
+    let state = app.state::<State>();
+    let (provider, model) = llm::chosen(&state.db(), llm::Tier::Fast)?;
+    let request = assistant::event_request(&text, chrono::Local::now(), model);
+    let key = secrets::get(&provider.id)?;
+    let workdir = app.path().app_cache_dir()?.join("cli");
+    let attempts = async {
+        // Asked a second time when the first answer cannot be read, as for the sorting.
+        for _ in 0..2 {
+            let reply = llm::complete(&provider, key.as_deref(), &request, &workdir).await?;
+            if let Some(event) = assistant::read_event(&reply.text) {
+                return Ok(event);
+            }
+        }
+        Err("The model's answer could not be read.".to_owned())
+    };
+    Ok(cancellable(&state, request_id, ANSWER_LIMIT, attempts).await?)
+}
+
 /// Sorts the mail still waiting without a label, with the user's fast model, and returns how
 /// many mails got one. Cancellable like `ask`.
 #[tauri::command]
@@ -465,7 +510,10 @@ pub fn run() {
             sync_now,
             create_task,
             set_task_done,
-            delete_task,
+            delete_local,
+            create_event,
+            event_page,
+            draft_event,
             act_on_item,
             list_sources,
             save_source,
