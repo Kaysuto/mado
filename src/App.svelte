@@ -2,9 +2,11 @@
   import { onMount } from 'svelte'
   import Assistant from './Assistant.svelte'
   import Focus from './Focus.svelte'
+  import Launcher from './Launcher.svelte'
   import Settings from './Settings.svelte'
   import StatusBar from './StatusBar.svelte'
   import { type Item, getSetting, setSetting } from './lib/api'
+  import { asked } from './lib/assistant.svelte'
   import { i18n, restoreLocale } from './lib/i18n.svelte'
   import { takeNote } from './lib/notes.svelte'
   import { SPACES, type Space } from './lib/spaces'
@@ -22,11 +24,18 @@
 
   let view = $state<View>('today')
   let assistant = $state(false)
+  let launcher = $state<Launcher>()
 
   /** Opens or closes the assistant, and remembers it. */
   function toggleAssistant() {
     assistant = !assistant
     void setSetting('assistant', assistant)
+  }
+
+  /** Opens the assistant, on `question` when there is one. */
+  function ask(question: string) {
+    if (!assistant) toggleAssistant()
+    asked.question = question
   }
 
   /** Opens a view and remembers it, so the app reopens where it was left. */
@@ -69,6 +78,10 @@
       <span class="logo" aria-hidden="true">窓</span>
       <span>Madow</span>
     </div>
+    <button class="nav" onclick={() => launcher?.open()}>
+      <span>{i18n.t.launcher.open}</span>
+      <kbd>Ctrl+K</kbd>
+    </button>
     <ul>
       {#each SPACES as space, index (space)}
         <li>
@@ -126,6 +139,7 @@
     <Assistant onclose={toggleAssistant} />
   {/if}
   <StatusBar onshow={show} />
+  <Launcher bind:this={launcher} onshow={show} onask={ask} />
 </div>
 
 <style>

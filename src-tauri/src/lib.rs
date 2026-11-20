@@ -8,6 +8,7 @@ mod error;
 mod focus;
 mod http;
 mod items;
+mod launcher;
 mod llm;
 mod media;
 mod secrets;
@@ -357,6 +358,40 @@ fn set_setting(state: tauri::State<'_, State>, key: &str, value: serde_json::Val
     settings::set(&state.db(), key, &value)
 }
 
+// ---------- launcher ----------
+
+/// The shortcut that calls the launcher, as the settings show it.
+#[derive(Serialize)]
+struct LauncherShortcut {
+    shortcut: String,
+    /// False when another application holds it, or when this system has no such shortcuts.
+    active: bool,
+}
+
+#[tauri::command]
+fn launcher_shortcut(app: AppHandle) -> Result<LauncherShortcut> {
+    let shortcut = launcher::chosen(&app.state::<State>().db())?;
+    let active = launcher::bound(&app, &shortcut);
+    Ok(LauncherShortcut { shortcut, active })
+}
+
+/// Changes the shortcut that calls the launcher; an empty one removes it. A shortcut that
+/// cannot be taken is refused, and the one before stays.
+#[tauri::command]
+fn set_launcher_shortcut(app: AppHandle, shortcut: &str) -> Result<()> {
+    let shortcut = shortcut.trim();
+    let before = launcher::chosen(&app.state::<State>().db())?;
+    if let Err(cause) = launcher::bind(&app, shortcut) {
+        let _ = launcher::bind(&app, &before);
+        return Err(cause);
+    }
+    settings::set(
+        &app.state::<State>().db(),
+        launcher::SHORTCUT,
+        &shortcut.into(),
+    )
+}
+
 // ---------- models ----------
 
 /// A provider as the interface sees it: never its key, only whether it has one.
@@ -693,21 +728,23 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // A second launch brings the running window forward instead of opening another app.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.set_focus();
-            }
+            launcher::bring_forward(app);
         }))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             let db = db::open(&dir.join("madow.db"))?;
+            let shortcut = launcher::chosen(&db)?;
             app.manage(State {
                 db: Mutex::new(db),
                 running: Mutex::default(),
                 sync_errors: Mutex::default(),
                 system: Mutex::new(system::start()),
             });
+            // Another application may hold the shortcut: Madow starts without it, and the
+            // settings say so.
+            let _ = launcher::bind(app.handle(), &shortcut);
             sync::start(app.handle().clone());
             Ok(())
         })
@@ -740,6 +777,8 @@ pub fn run() {
             delete_source,
             get_setting,
             set_setting,
+            launcher_shortcut,
+            set_launcher_shortcut,
             list_providers,
             save_provider,
             delete_provider,

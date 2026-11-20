@@ -254,6 +254,20 @@ export type MediaAction = 'toggle' | 'next' | 'previous'
 export const nowPlaying = () => invoke<Track | null>('now_playing')
 export const mediaControl = (action: MediaAction) => invoke<void>('media_control', { action })
 
+/** The shortcut that calls the launcher from anywhere (mirrors `src-tauri/src/launcher.rs`). */
+export interface LauncherShortcut {
+  /** Written as `Alt+Space`. Empty when the user wants none. */
+  shortcut: string
+  /** False when another application holds it, or when this system has no such shortcuts. */
+  active: boolean
+}
+
+export const launcherShortcut = () => invoke<LauncherShortcut>('launcher_shortcut')
+/** Rejects when the shortcut cannot be taken; the one before then stays. */
+export const setLauncherShortcut = (shortcut: string) => invoke<void>('set_launcher_shortcut', { shortcut })
+/** Calls `handler` when that shortcut is pressed. Resolves to the function that stops it. */
+export const onLauncherCalled = (handler: () => void): Promise<UnlistenFn> => listen('launcher-called', handler)
+
 // ---------- sources (types mirror `src-tauri/src/connectors/mod.rs`) ----------
 
 export type SourceKind = 'github' | 'gitlab' | 'linear' | 'jira' | 'ical' | 'imap' | 'feed' | 'server'

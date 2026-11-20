@@ -18,6 +18,7 @@ Aperçu : Madow s'utilise au quotidien mais reste jeune, et des choses bougeront
 - **Bilan** : le temps de focus par projet, vos commits, et un bilan écrit du jour ou de la semaine.
 - **Assistant** : un chat qui connaît votre journée, avec son historique.
 - **Focus** : un chrono lancé depuis n'importe quel élément.
+- **Lanceur** : Ctrl+K, ou Alt+Espace depuis n'importe où sur l'ordinateur, retrouve un élément, change d'espace, ouvre un projet dans votre éditeur, note une tâche ou une idée, ou interroge l'assistant. Le raccourci global se change dans les réglages.
 - **Barre d'état** : processeur, mémoire et disque, la musique en cours avec ses boutons (Windows et Linux), les agents au travail, et les serveurs qui ne répondent plus.
 
 Sources pour l'instant : toute boîte mail (IMAP/SMTP), les agendas par lien iCal, GitHub et GitLab, Linear et Jira, les flux RSS et Atom, et des serveurs à surveiller. Modèles : Claude Code ou Codex avec votre abonnement, une clé API (Anthropic ou tout service compatible OpenAI), ou un modèle local. Des données d'exemple sont intégrées, pour faire le tour avant de connecter quoi que ce soit.
