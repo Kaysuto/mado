@@ -216,6 +216,19 @@ export interface AgentSession {
 /** The agent sessions of the last hours, the latest first. */
 export const listAgentSessions = () => invoke<AgentSession[]>('list_agent_sessions')
 
+/** What the machine is doing (mirrors `src-tauri/src/system.rs`). Sizes are bytes. */
+export interface SystemReading {
+  /** Processor use since the reading before, all cores together: 0 to 100. */
+  cpu: number
+  memoryUsed: number
+  memoryTotal: number
+  /** The disk the user's folder is on. */
+  disk: { free: number; total: number } | null
+}
+
+/** Null on a system that cannot be read. */
+export const systemReading = () => invoke<SystemReading | null>('system_reading')
+
 // ---------- sources (types mirror `src-tauri/src/connectors/mod.rs`) ----------
 
 export type SourceKind = 'github' | 'linear' | 'ical' | 'imap' | 'feed'

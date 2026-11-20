@@ -12,6 +12,7 @@ mod llm;
 mod secrets;
 mod settings;
 mod sync;
+mod system;
 
 use error::{Error, Result};
 use rusqlite::Connection;
@@ -36,6 +37,8 @@ pub struct State {
     running: Mutex<HashMap<String, oneshot::Sender<()>>>,
     /// Why each source failed at the last sync. A source that is not listed is fine.
     sync_errors: Mutex<HashMap<String, String>>,
+    /// Kept between readings: the processor use is what happened since the reading before.
+    system: Mutex<Option<sysinfo::System>>,
 }
 
 impl State {
@@ -246,6 +249,21 @@ fn pick_folder(app: AppHandle) -> Option<String> {
 #[tauri::command]
 fn open_repository(state: tauri::State<'_, State>, path: &str, tool: code::Tool) -> Result<()> {
     code::open(&state.db(), path, tool)
+}
+
+// ---------- system ----------
+
+/// What the machine is doing right now, for the status bar. `None` on a system that cannot
+/// be read.
+#[tauri::command]
+fn system_reading(app: AppHandle) -> Result<Option<system::Reading>> {
+    let state = app.state::<State>();
+    let mut system = state
+        .system
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let home = app.path().home_dir()?;
+    Ok(system.as_mut().map(|system| system::read(system, &home)))
 }
 
 // ---------- sources ----------
@@ -660,6 +678,7 @@ pub fn run() {
                 db: Mutex::new(db),
                 running: Mutex::default(),
                 sync_errors: Mutex::default(),
+                system: Mutex::new(system::start()),
             });
             sync::start(app.handle().clone());
             Ok(())
@@ -678,6 +697,7 @@ pub fn run() {
             focus_total,
             act_on_item,
             list_repositories,
+            system_reading,
             list_agent_sessions,
             list_agents,
             launch_agent,
@@ -720,6 +740,7 @@ mod tests {
             db: Mutex::new(db::open_in_memory()),
             running: Mutex::default(),
             sync_errors: Mutex::default(),
+            system: Mutex::new(system::start()),
         }
     }
 
