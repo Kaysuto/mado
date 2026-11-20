@@ -411,11 +411,16 @@ async fn briefing(
 /// The figures of a review, counted by the app: focus time by item and by day, and the tasks
 /// ticked off, over today or the last seven days.
 #[tauri::command]
-fn review_numbers(
-    state: tauri::State<'_, State>,
-    period: assistant::Period,
-) -> Result<assistant::Review> {
-    assistant::review(&state.db(), period, &chrono::Local::now())
+async fn review_numbers(app: AppHandle, period: assistant::Period) -> Result<assistant::Review> {
+    let now = chrono::Local::now();
+    // The database is read and released before git is waited on.
+    let (mut review, folders) = {
+        let state = app.state::<State>();
+        let db = state.db();
+        (assistant::review(&db, period, &now)?, code::folders(&db)?)
+    };
+    review.commits = code::commits(&folders, period.start(&now)).await;
+    Ok(review)
 }
 
 /// Writes the review of the day or of the last seven days, with the user's strong model.
@@ -427,8 +432,11 @@ async fn review(
     lang: assistant::Lang,
     period: assistant::Period,
 ) -> Result<llm::Reply> {
+    let now = chrono::Local::now();
+    let folders = code::folders(&app.state::<State>().db())?;
+    let commits = code::commits(&folders, period.start(&now)).await;
     written(&app, request_id, |db, model| {
-        assistant::review_request(db, lang, period, chrono::Local::now(), model)
+        assistant::review_request(db, lang, period, now, model, &commits)
     })
     .await
 }

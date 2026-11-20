@@ -121,6 +121,7 @@ export const fr: typeof en = {
     focus: 'Temps de focus',
     worked: 'Éléments travaillés',
     ticked: 'Tâches cochées',
+    commits: 'Commits',
     perDay: 'Focus par jour',
     byProject: 'Temps par projet',
     noProject: 'Sans projet',

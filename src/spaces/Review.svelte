@@ -38,6 +38,7 @@
   const longest = $derived(Math.max(1, ...days.map(day => day.seconds)))
   const projects = $derived(byProject(numbers?.focus.items ?? []))
   const current = $derived(written[period])
+  const committed = $derived(numbers?.commits ?? [])
   const weekday = $derived(new Intl.DateTimeFormat(i18n.locale, { weekday: 'short' }))
   const moment = $derived(
     new Intl.DateTimeFormat(i18n.locale, { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }),
@@ -119,6 +120,10 @@
     <dt>{i18n.t.review.ticked}</dt>
     <dd>{numbers?.done.length ?? 0}</dd>
   </div>
+  <div class="tile">
+    <dt>{i18n.t.review.commits}</dt>
+    <dd>{committed.reduce((sum, work) => sum + work.commits.length, 0)}</dd>
+  </div>
 </dl>
 
 <div class="columns">
@@ -158,6 +163,23 @@
         </ul>
       {/each}
     </section>
+
+    {#if committed.length > 0}
+      <section>
+        <h2>{i18n.t.review.commits}</h2>
+        {#each committed as work (work.repository)}
+          <div class="project">
+            <span>{work.repository}</span>
+            <span class="time">{work.commits.length}</span>
+          </div>
+          <ul>
+            {#each work.commits.slice(0, 8) as subject, index (index)}
+              <li><span class="title">{subject}</span></li>
+            {/each}
+          </ul>
+        {/each}
+      </section>
+    {/if}
   </div>
 
   <section class="card">
