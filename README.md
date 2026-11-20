@@ -4,7 +4,31 @@
 
 **Madow** (from 窓, *mado*, "window" in Japanese) brings mail, calendar, tasks, pull requests, tickets, coding agents and news into one local-first desktop app. You pick the model: a subscription you already pay for, an API key, a free tier, or a model running on your own machine.
 
-Work in progress: the first usable release is not out yet.
+Early preview: Madow is usable day to day but still young, and things will move between versions.
+
+## What works today
+
+- **Today**: the day at a glance, with a briefing written by your model.
+- **Inbox**: mail, review requests, notifications and alerts in one list, sorted by your fast model. Answer a mail with a draft you edit before sending.
+- **Tasks**: your own tasks and the tickets of your trackers together.
+- **Calendar**: your calendars by month, and new events written in plain words.
+- **Review**: focus time by project, and a written review of the day or the week.
+- **Assistant**: a chat that knows your day, with its history.
+- **Focus**: a stopwatch started from any item.
+
+Sources so far: any mailbox (IMAP/SMTP), calendars by iCal link, GitHub and Linear. Models: Claude Code or Codex with your subscription, an API key (Anthropic or any OpenAI-compatible service), or a local model. Sample data is built in, to look around before connecting anything.
+
+Your data stays on your machine. The model never gets a tool on it: Madow reads your sources itself and hands over text, and nothing is sent or created without your click.
+
+## Install
+
+Download the installer for your system from the [latest release](https://github.com/Kaysuto/madow/releases).
+
+The installers are not signed yet, so your system will warn you:
+
+- **Windows**: on the SmartScreen warning, choose "More info", then "Run anyway".
+- **macOS**: open the app once, then allow it in System Settings → Privacy & Security → "Open Anyway". Pick `aarch64` for Apple Silicon, `x64` for Intel.
+- **Linux**: install the `.deb` or `.rpm`, or make the `.AppImage` executable and run it.
 
 [Version française](README.fr.md)
 
