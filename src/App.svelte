@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Assistant from './Assistant.svelte'
+  import Focus from './Focus.svelte'
   import Settings from './Settings.svelte'
   import { getSetting, setSetting } from './lib/api'
   import { i18n, restoreLocale } from './lib/i18n.svelte'
@@ -73,6 +74,7 @@
         </li>
       {/each}
     </ul>
+    <Focus />
     <button class="nav" aria-pressed={assistant} onclick={toggleAssistant}>
       <span>{i18n.t.assistant.title}</span>
       <kbd>Alt+A</kbd>

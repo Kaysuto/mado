@@ -19,6 +19,7 @@
     setTriage,
     sortMail,
   } from '../lib/api'
+  import { focus } from '../lib/focus.svelte'
   import { i18n } from '../lib/i18n.svelte'
   import { relativeTime } from '../lib/time'
   import Reply from './Reply.svelte'
@@ -196,6 +197,11 @@
         </div>
         {#if item.url}
           <button class="btn" onclick={() => openPage(item.url)}>{i18n.t.open}</button>
+        {/if}
+        {#if focus.session?.itemId !== item.id}
+          <button class="btn" onclick={() => focus.start(item).catch(cause => (actionError = String(cause)))}>
+            {i18n.t.focus.on}
+          </button>
         {/if}
         {#if canReply(item) && replying?.id !== item.id}
           <button

@@ -95,6 +95,19 @@ export const createEvent = (event: EventDraft) => invoke<void>('create_event', {
 /** The page of the user's online calendar that creates this event, when it has one. */
 export const eventPage = (event: EventDraft) => invoke<string | null>('event_page', { event })
 
+/** A focus session that just ended. Times are Unix seconds; `seconds` leaves the pauses out. */
+export interface FocusSession {
+  itemId: number | null
+  title: string
+  startedAt: number
+  endedAt: number
+  seconds: number
+}
+
+export const logFocus = (session: FocusSession) => invoke<void>('log_focus', { session })
+/** Seconds of focus in the sessions that ended at `since` (Unix seconds) or later. */
+export const focusTotal = (since: number) => invoke<number>('focus_total', { since })
+
 /**
  * Click handler for text written by a model: its links open in the browser, never inside the
  * app's own window.

@@ -26,6 +26,18 @@ export const fr: typeof en = {
     alert: 'Alerte',
     article: 'Article',
   },
+  focus: {
+    title: 'Focus',
+    start: 'Démarrer un focus',
+    on: 'Focus',
+    free: 'Rien de particulier',
+    pause: 'Pause',
+    resume: 'Reprendre',
+    finish: 'Terminer',
+    cancel: 'Annuler',
+    confirm: 'Confirmer',
+    today: "Aujourd'hui :",
+  },
   reply: {
     open: 'Répondre',
     to: 'À',

@@ -24,6 +24,18 @@ export const en = {
     alert: 'Alert',
     article: 'Article',
   },
+  focus: {
+    title: 'Focus',
+    start: 'Start a focus',
+    on: 'Focus',
+    free: 'Nothing in particular',
+    pause: 'Pause',
+    resume: 'Resume',
+    finish: 'Finish',
+    cancel: 'Cancel',
+    confirm: 'Confirm',
+    today: 'Today:',
+  },
   reply: {
     open: 'Reply',
     to: 'To',

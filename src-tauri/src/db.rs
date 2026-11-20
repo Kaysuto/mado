@@ -53,6 +53,19 @@ const MIGRATIONS: &[&str] = &[
     ",
     // 2: the label a model gave an item when sorting it. Local, like the triage.
     "ALTER TABLE items ADD COLUMN label TEXT;",
+    // 3: finished focus sessions. `item_id` is not a foreign key: a sync may remove the item,
+    // the time spent on it stays.
+    "
+    CREATE TABLE focus (
+        id INTEGER PRIMARY KEY,
+        item_id INTEGER,
+        title TEXT NOT NULL,
+        started_at INTEGER NOT NULL,
+        ended_at INTEGER NOT NULL,
+        seconds INTEGER NOT NULL
+    );
+    CREATE INDEX focus_by_end ON focus (ended_at);
+    ",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {
