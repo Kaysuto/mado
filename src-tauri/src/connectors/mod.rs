@@ -9,6 +9,7 @@ mod ical;
 mod imap;
 mod jira;
 mod linear;
+mod server;
 mod smtp;
 
 use crate::{
@@ -87,6 +88,8 @@ pub enum SourceKind {
     Ical,
     /// A news feed (RSS, Atom). Its "token" is the feed's address.
     Feed,
+    /// A server to keep an eye on. `options` say where it is; it has no secret.
+    Server,
 }
 
 /// A source the user has connected. Its token, if any, is in the keychain.
@@ -152,6 +155,10 @@ pub fn configured(conn: &Connection) -> Result<Vec<Box<dyn Connector>>> {
             }
             SourceKind::Ical => Box::new(ical::Ical::new(source.id, token)),
             SourceKind::Feed => Box::new(feed::Feed::new(source.id, token)),
+            SourceKind::Server => {
+                let options = serde_json::from_value(source.options).unwrap_or_default();
+                Box::new(server::Server::new(source.id, source.name, options))
+            }
             SourceKind::Imap => {
                 let options = serde_json::from_value(source.options).unwrap_or_default();
                 Box::new(imap::Imap::new(source.id, options, token))

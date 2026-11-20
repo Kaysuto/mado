@@ -3,7 +3,7 @@
   import { type SourceKind, type SourceView, deleteSource, listSources, saveSource, syncNow } from './lib/api'
   import { i18n } from './lib/i18n.svelte'
 
-  const KINDS: SourceKind[] = ['github', 'gitlab', 'linear', 'jira', 'ical', 'imap', 'feed']
+  const KINDS: SourceKind[] = ['github', 'gitlab', 'linear', 'jira', 'ical', 'imap', 'feed', 'server']
   /** Servers of common mail services, offered while typing. Any other IMAP server works too. */
   const MAIL_SERVERS = ['imap.gmail.com', 'imap.mail.me.com', 'imap.fastmail.com', 'imap.mail.yahoo.com', 'imap.gmx.com']
   /** Calendars have no brand: any service gives an iCal address. */
@@ -16,6 +16,7 @@
       ical: `${i18n.t.spaces.calendar} (iCal)`,
       imap: `${i18n.t.kinds.mail} (IMAP)`,
       feed: `${i18n.t.spaces.news} (RSS, Atom)`,
+      server: i18n.t.sources.serverKind,
     })[kind]
 
   let sources = $state<SourceView[]>([])
@@ -39,7 +40,7 @@
 
   $effect(() => {
     // A source that has no brand is named after what it brings; the user renames it.
-    name = { ical: i18n.t.spaces.calendar, imap: i18n.t.kinds.mail, feed: i18n.t.spaces.news }[kind as string] ?? label(kind)
+    name = { ical: i18n.t.spaces.calendar, imap: i18n.t.kinds.mail, feed: i18n.t.spaces.news, server: i18n.t.sources.serverKind }[kind as string] ?? label(kind)
     token = ''
   })
 
@@ -73,7 +74,9 @@
             ? { url: instance.trim() }
             : kind === 'jira'
               ? { url: instance.trim(), email: username.trim() }
-              : {}
+              : kind === 'server'
+                ? { address: instance.trim() }
+                : {}
       await saveSource({ id: crypto.randomUUID(), kind, name: name.trim(), options }, token)
       token = ''
       await syncNow()
@@ -177,13 +180,13 @@
       bind:value={smtpPort}
     />
   {/if}
-  {#if kind === 'gitlab' || kind === 'jira'}
+  {#if kind === 'gitlab' || kind === 'jira' || kind === 'server'}
     <input
       class="field wide"
-      type="url"
+      type={kind === 'server' ? 'text' : 'url'}
       placeholder={i18n.t.sources.instance[kind]}
       aria-label={i18n.t.sources.instance[kind]}
-      required={kind === 'jira'}
+      required={kind !== 'gitlab'}
       bind:value={instance}
     />
   {/if}
@@ -198,13 +201,15 @@
       bind:value={username}
     />
   {/if}
+  <!-- A server to watch has no secret: its address is all there is. -->
   <input
     class="field wide"
+    hidden={kind === 'server'}
     type={kind === 'feed' ? 'url' : 'password'}
     autocomplete="off"
     placeholder={i18n.t.sources.token[kind]}
     aria-label={i18n.t.sources.token[kind]}
-    required={kind !== 'github'}
+    required={kind !== 'github' && kind !== 'server'}
     bind:value={token}
   />
   <button class="btn" type="submit" disabled={busy}>{i18n.t.sources.add}</button>

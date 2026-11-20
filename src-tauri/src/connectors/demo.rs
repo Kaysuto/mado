@@ -189,6 +189,8 @@ impl Connector for Demo {
                             "actions": ["reply"],
                             "replyTo": "sender@example.com",
                         }),
+                        // A server that stopped answering, as the status bar counts them.
+                        Kind::Alert => json!({ "server": true }),
                         _ => json!({}),
                     },
                 }
