@@ -9,6 +9,7 @@ mod focus;
 mod http;
 mod items;
 mod llm;
+mod media;
 mod secrets;
 mod settings;
 mod sync;
@@ -264,6 +265,17 @@ fn system_reading(app: AppHandle) -> Result<Option<system::Reading>> {
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     let home = app.path().home_dir()?;
     Ok(system.as_mut().map(|system| system::read(system, &home)))
+}
+
+// Not on the main thread: both wait for the system's answer.
+#[tauri::command(async)]
+fn now_playing() -> Option<media::Track> {
+    media::track()
+}
+
+#[tauri::command(async)]
+fn media_control(action: media::Action) {
+    media::act(action);
 }
 
 // ---------- sources ----------
@@ -698,6 +710,8 @@ pub fn run() {
             act_on_item,
             list_repositories,
             system_reading,
+            now_playing,
+            media_control,
             list_agent_sessions,
             list_agents,
             launch_agent,

@@ -229,6 +229,19 @@ export interface SystemReading {
 /** Null on a system that cannot be read. */
 export const systemReading = () => invoke<SystemReading | null>('system_reading')
 
+/** What is playing on the machine (mirrors `src-tauri/src/media.rs`). */
+export interface Track {
+  title: string
+  /** Empty when the player does not tell. */
+  artist: string
+  playing: boolean
+}
+export type MediaAction = 'toggle' | 'next' | 'previous'
+
+/** Null when nothing is playing, or on a system that does not tell. */
+export const nowPlaying = () => invoke<Track | null>('now_playing')
+export const mediaControl = (action: MediaAction) => invoke<void>('media_control', { action })
+
 // ---------- sources (types mirror `src-tauri/src/connectors/mod.rs`) ----------
 
 export type SourceKind = 'github' | 'gitlab' | 'linear' | 'jira' | 'ical' | 'imap' | 'feed' | 'server'

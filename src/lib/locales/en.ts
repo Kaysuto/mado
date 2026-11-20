@@ -183,6 +183,10 @@ export const en = {
     gigabytes: 'GB',
     agents: 'Agents working:',
     serversDown: 'Servers down:',
+    previous: 'Previous track',
+    play: 'Play',
+    pause: 'Pause',
+    next: 'Next track',
   },
   calendar: {
     previous: 'Previous month',
