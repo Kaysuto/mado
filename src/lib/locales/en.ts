@@ -174,6 +174,15 @@ export const en = {
     empty: 'Nothing here.',
     noFeed: 'No feed is followed yet. Add the RSS or Atom address of a site in the settings.',
   },
+  status: {
+    title: 'This computer',
+    cpu: 'Processor',
+    memory: 'Memory',
+    disk: 'Disk',
+    free: 'free',
+    gigabytes: 'GB',
+    agents: 'Agents working:',
+  },
   calendar: {
     previous: 'Previous month',
     next: 'Next month',

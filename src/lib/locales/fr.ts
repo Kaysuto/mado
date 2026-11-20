@@ -175,6 +175,15 @@ export const fr: typeof en = {
     empty: 'Rien ici.',
     noFeed: "Aucun flux n'est encore suivi. Ajoutez l'adresse RSS ou Atom d'un site dans les réglages.",
   },
+  status: {
+    title: 'Cet ordinateur',
+    cpu: 'Processeur',
+    memory: 'Mémoire',
+    disk: 'Disque',
+    free: 'libres',
+    gigabytes: 'Go',
+    agents: 'Agents en cours :',
+  },
   calendar: {
     previous: 'Mois précédent',
     next: 'Mois suivant',

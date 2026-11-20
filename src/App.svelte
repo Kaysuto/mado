@@ -3,6 +3,7 @@
   import Assistant from './Assistant.svelte'
   import Focus from './Focus.svelte'
   import Settings from './Settings.svelte'
+  import StatusBar from './StatusBar.svelte'
   import { getSetting, setSetting } from './lib/api'
   import { i18n, restoreLocale } from './lib/i18n.svelte'
   import { SPACES, type Space } from './lib/spaces'
@@ -117,12 +118,14 @@
   {#if assistant}
     <Assistant onclose={toggleAssistant} />
   {/if}
+  <StatusBar oncode={() => show('code')} />
 </div>
 
 <style>
   .shell {
     display: grid;
     grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
     height: 100%;
   }
   .shell.with-assistant {
