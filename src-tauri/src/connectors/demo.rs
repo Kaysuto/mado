@@ -1,7 +1,7 @@
 //! Sample data, to try the app (and take screenshots) without connecting any account.
 
 use super::Connector;
-use crate::items::{Kind, NewItem, now};
+use crate::items::{Item, Kind, NewItem, now};
 use async_trait::async_trait;
 use chrono::{Local, TimeZone};
 use serde_json::json;
@@ -155,6 +155,11 @@ impl Connector for Demo {
                             "location": "Video call",
                             "link": "https://meet.example.com/weekly-sync",
                         }),
+                        // A reply can be drafted on a sample mail, never sent.
+                        Kind::Mail => json!({
+                            "actions": ["reply"],
+                            "replyTo": "sender@example.com",
+                        }),
                         _ => json!({}),
                     },
                 }
@@ -200,5 +205,9 @@ impl Connector for Demo {
             ),
         ]);
         Ok(items)
+    }
+
+    async fn reply(&self, _item: &Item, _text: &str) -> Result<(), String> {
+        Err("This is sample data: nothing was sent.".into())
     }
 }

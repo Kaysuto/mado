@@ -223,19 +223,6 @@
     background: var(--bg);
     font-size: 13px;
   }
-  .primary {
-    border-color: transparent;
-    background: var(--accent);
-    color: #111113;
-  }
-  .primary:hover {
-    background: var(--accent);
-    filter: brightness(1.1);
-  }
-  .btn:disabled {
-    opacity: 0.45;
-    cursor: default;
-  }
   .hint {
     margin: 0;
     color: var(--muted);

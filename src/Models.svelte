@@ -323,8 +323,4 @@
     color: var(--ok);
     font-size: 13px;
   }
-  .btn:disabled {
-    opacity: 0.45;
-    cursor: default;
-  }
 </style>

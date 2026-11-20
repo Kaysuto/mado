@@ -6,6 +6,7 @@
     LABELS,
     type ItemAction,
     type Label,
+    type SavedReply,
     actOnItem,
     cancel,
     type Item,
@@ -20,6 +21,7 @@
   } from '../lib/api'
   import { i18n } from '../lib/i18n.svelte'
   import { relativeTime } from '../lib/time'
+  import Reply from './Reply.svelte'
 
   let { onsettings }: { onsettings: () => void } = $props()
 
@@ -30,6 +32,10 @@
   let hasSource = $state(true)
   let actionError = $state('')
   let acting = $state<number | null>(null)
+  let replying = $state<SavedReply | null>(null) // the answer being written, and to which mail
+  let notice = $state('')
+
+  const canReply = (item: Item) => Array.isArray(item.meta.actions) && item.meta.actions.includes('reply')
 
   /** What the item's own source says it can do to it. */
   const actionsOf = (item: Item) =>
@@ -103,6 +109,10 @@
   })
 
   onMount(() => {
+    // An answer left unfinished is opened again.
+    void getSetting<SavedReply>('reply').then(saved => {
+      if (saved && typeof saved.id === 'number') replying = saved
+    })
     const listening = onItemsChanged(load)
     const clock = setInterval(() => (now = Date.now() / 1000), 60_000)
     return () => {
@@ -147,6 +157,9 @@
   {/if}
 </div>
 
+{#if notice}
+  <p class="notice" role="status">{notice}</p>
+{/if}
 {#if actionError}
   <p class="error" role="alert">{actionError}</p>
 {/if}
@@ -184,6 +197,17 @@
         {#if item.url}
           <button class="btn" onclick={() => openPage(item.url)}>{i18n.t.open}</button>
         {/if}
+        {#if canReply(item) && replying?.id !== item.id}
+          <button
+            class="btn"
+            onclick={() => {
+              notice = ''
+              replying = { id: item.id, intent: '', text: '' }
+            }}
+          >
+            {i18n.t.reply.open}
+          </button>
+        {/if}
         {#each actionsOf(item) as action (action)}
           <button class="btn" disabled={acting === item.id} onclick={() => act(item, action)}>
             {i18n.t.actions[action]}
@@ -192,6 +216,17 @@
         <button class="btn" onclick={() => setTriage(item.id, triage === 'inbox' ? 'done' : 'inbox')}>
           {triage === 'inbox' ? i18n.t.inbox.markDone : i18n.t.inbox.restore}
         </button>
+        {#if replying?.id === item.id}
+          <Reply
+            {item}
+            saved={replying}
+            onclose={() => (replying = null)}
+            onsent={() => {
+              replying = null
+              notice = i18n.t.reply.sent
+            }}
+          />
+        {/if}
       </li>
     {/each}
   </ul>
@@ -233,13 +268,14 @@
   }
   li {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 16px;
     padding: 12px 8px;
     border-bottom: 1px solid var(--border);
   }
   .text {
-    flex: 1;
+    flex: 1 1 320px;
     min-width: 0;
   }
   .top {
@@ -277,10 +313,6 @@
   .title.read {
     font-weight: 400;
   }
-  .btn:disabled {
-    opacity: 0.45;
-    cursor: default;
-  }
   .body {
     overflow: hidden;
     color: var(--muted);
@@ -301,5 +333,8 @@
   }
   .error {
     color: var(--danger);
+  }
+  .notice {
+    color: var(--ok);
   }
 </style>

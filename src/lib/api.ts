@@ -163,6 +163,13 @@ export const listModels = (providerId: string) => invoke<string[]>('list_models'
 export const ask = (requestId: string, providerId: string, request: AskRequest) =>
   invoke<Reply>('ask', { requestId, providerId, request })
 export const cancel = (requestId: string) => invoke<void>('cancel', { requestId })
+/** The channel the core hands an answer over on, piece by piece. */
+function pieces(onDelta: (piece: string) => void) {
+  const channel = new Channel<string>()
+  channel.onmessage = onDelta
+  return channel
+}
+
 /**
  * One turn of the chat, with the strong model. `onDelta` receives the answer piece by piece
  * while it is being written; the promise resolves with the whole answer.
@@ -173,10 +180,25 @@ export function chat(
   messages: ChatMessage[],
   onDelta: (piece: string) => void,
 ) {
-  const channel = new Channel<string>()
-  channel.onmessage = onDelta
-  return invoke<Reply>('chat', { requestId, lang, messages, onDelta: channel })
+  return invoke<Reply>('chat', { requestId, lang, messages, onDelta: pieces(onDelta) })
 }
+
+/** A reply being written to a mail, kept so it survives a restart. */
+export interface SavedReply {
+  id: number
+  intent: string
+  text: string
+}
+
+/**
+ * Drafts the answer to a mail with the strong model. `intent` is what the user wants to say; it
+ * may be empty. `onDelta` receives the draft piece by piece. Nothing is sent.
+ */
+export const draftReply = (requestId: string, id: number, intent: string, onDelta: (piece: string) => void) =>
+  invoke<Reply>('draft_reply', { requestId, id, intent, onDelta: pieces(onDelta) })
+
+/** Sends the user's answer to a mail, through the mailbox it arrived in. */
+export const sendReply = (id: number, text: string) => invoke<void>('send_reply', { id, text })
 
 /**
  * Sorts the mail waiting without a label, with the fast model. Resolves to how many mails

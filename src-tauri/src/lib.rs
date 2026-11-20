@@ -100,17 +100,38 @@ fn delete_task(app: AppHandle, id: i64) -> Result<()> {
     Ok(())
 }
 
-/// Does something to an item where it lives (mark a mail as read, archive it…), then
-/// records the result locally.
-#[tauri::command]
-async fn act_on_item(app: AppHandle, id: i64, action: connectors::Action) -> Result<()> {
-    let state = app.state::<State>();
+/// An item and the connector of the source it comes from.
+fn item_with_connector(
+    state: &State,
+    id: i64,
+) -> Result<(items::Item, Box<dyn connectors::Connector>)> {
     let gone = || Error::Message("This item no longer exists.".into());
     let item = items::get(&state.db(), id)?.ok_or_else(gone)?;
     let connector = connectors::configured(&state.db())?
         .into_iter()
         .find(|connector| connector.source() == item.source)
         .ok_or_else(gone)?;
+    Ok((item, connector))
+}
+
+/// Sends the user's answer to a mail, through the mailbox it arrived in. Nothing calls this
+/// but the user's own click on "Send".
+#[tauri::command]
+async fn send_reply(app: AppHandle, id: i64, text: String) -> Result<()> {
+    if text.trim().is_empty() {
+        return Err(Error::Message("The reply is empty.".into()));
+    }
+    let (mail, connector) = item_with_connector(&app.state::<State>(), id)?;
+    connector.reply(&mail, &text).await?;
+    Ok(())
+}
+
+/// Does something to an item where it lives (mark a mail as read, archive it…), then
+/// records the result locally.
+#[tauri::command]
+async fn act_on_item(app: AppHandle, id: i64, action: connectors::Action) -> Result<()> {
+    let state = app.state::<State>();
+    let (item, connector) = item_with_connector(&state, id)?;
     connector.act(&item.external_id, action).await?;
     match action {
         connectors::Action::MarkRead => items::set_state(&state.db(), id, "read")?,
@@ -315,6 +336,38 @@ async fn chat(
     Ok(cancellable(&state, request_id, ANSWER_LIMIT, call).await?)
 }
 
+/// Drafts the user's answer to a mail with the strong model, handing it over piece by piece
+/// on `on_delta`. `intent` is what the user wants to say; it may be empty. The draft is only
+/// text for the user to edit: nothing is sent. Cancellable like `ask`.
+#[tauri::command]
+async fn draft_reply(
+    app: AppHandle,
+    request_id: String,
+    id: i64,
+    intent: String,
+    on_delta: tauri::ipc::Channel<String>,
+) -> Result<llm::Reply> {
+    let state = app.state::<State>();
+    let (mail, connector) = item_with_connector(&state, id)?;
+    if mail.kind != items::Kind::Mail {
+        return Err(Error::Message("Only a mail can be answered.".into()));
+    }
+    let (provider, model) = llm::chosen(&state.db(), llm::Tier::Strong)?;
+    let key = secrets::get(&provider.id)?;
+    let workdir = app.path().app_cache_dir()?.join("cli");
+    let deliver = |piece: &str| {
+        let _ = on_delta.send(piece.to_owned());
+    };
+    let call = async {
+        // Only the start of a mail is stored: its whole text is read from where it lives.
+        let text = connector.full_text(&mail.external_id).await?;
+        let text = text.as_deref().unwrap_or(&mail.body);
+        let request = assistant::reply_request(&mail, text, &intent, model);
+        llm::stream(&provider, key.as_deref(), &request, &workdir, &deliver).await
+    };
+    Ok(cancellable(&state, request_id, ANSWER_LIMIT, call).await?)
+}
+
 /// Sorts the mail still waiting without a label, with the user's fast model, and returns how
 /// many mails got one. Cancellable like `ask`.
 #[tauri::command]
@@ -427,6 +480,8 @@ pub fn run() {
             briefing,
             chat,
             sort_mail,
+            draft_reply,
+            send_reply,
             cancel,
         ])
         .run(tauri::generate_context!())
