@@ -8,6 +8,7 @@
   import { SPACES, type Space } from './lib/spaces'
   import Calendar from './spaces/Calendar.svelte'
   import Inbox from './spaces/Inbox.svelte'
+  import Review from './spaces/Review.svelte'
   import Tasks from './spaces/Tasks.svelte'
   import Today from './spaces/Today.svelte'
 
@@ -97,6 +98,8 @@
       <Calendar />
     {:else if view === 'tasks'}
       <Tasks />
+    {:else if view === 'review'}
+      <Review onsettings={() => show('settings')} />
     {:else if view === 'settings'}
       <Settings />
     {:else}

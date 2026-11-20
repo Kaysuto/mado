@@ -1,3 +1,5 @@
+import type { FocusTime } from './api'
+
 /** A focus session in progress. Times are milliseconds, as `Date.now()` gives them. */
 export interface FocusState {
   /** The item worked on, if any. */
@@ -20,6 +22,24 @@ export function toggled(session: FocusState, now: number): FocusState {
   return session.runSince === null
     ? { ...session, runSince: now }
     : { ...session, spentMs: elapsed(session, now), runSince: null }
+}
+
+export interface ProjectTime {
+  project: string | null
+  seconds: number
+  items: FocusTime[]
+}
+
+/** Times gathered by project, most time first. What has no project comes together under `null`. */
+export function byProject(times: FocusTime[]): ProjectTime[] {
+  const groups = new Map<string | null, ProjectTime>()
+  for (const time of times) {
+    const group = groups.get(time.project) ?? { project: time.project, seconds: 0, items: [] }
+    group.seconds += time.seconds
+    group.items.push(time)
+    groups.set(time.project, group)
+  }
+  return [...groups.values()].sort((a, b) => b.seconds - a.seconds)
 }
 
 /** "05:09", or "1:02:03" from the first hour on. */

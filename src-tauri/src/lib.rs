@@ -327,13 +327,49 @@ async fn briefing(
     lang: assistant::Lang,
     done: Vec<String>,
 ) -> Result<llm::Reply> {
+    written(&app, request_id, |db, model| {
+        assistant::briefing_request(db, lang, &done, chrono::Local::now(), model)
+    })
+    .await
+}
+
+/// The figures of a review, counted by the app: focus time by item and by day, and the tasks
+/// ticked off, over today or the last seven days.
+#[tauri::command]
+fn review_numbers(
+    state: tauri::State<'_, State>,
+    period: assistant::Period,
+) -> Result<assistant::Review> {
+    assistant::review(&state.db(), period, &chrono::Local::now())
+}
+
+/// Writes the review of the day or of the last seven days, with the user's strong model.
+/// Cancellable like `ask`.
+#[tauri::command]
+async fn review(
+    app: AppHandle,
+    request_id: String,
+    lang: assistant::Lang,
+    period: assistant::Period,
+) -> Result<llm::Reply> {
+    written(&app, request_id, |db, model| {
+        assistant::review_request(db, lang, period, chrono::Local::now(), model)
+    })
+    .await
+}
+
+/// Asks the strong model what `build` makes of the database, and waits for its whole answer.
+async fn written(
+    app: &AppHandle,
+    request_id: String,
+    build: impl FnOnce(&Connection, String) -> Result<llm::Request>,
+) -> Result<llm::Reply> {
     let state = app.state::<State>();
     // The database is read and released before the model is waited on.
     let (provider, request) = {
         let db = state.db();
         let (provider, model) = llm::chosen(&db, llm::Tier::Strong)?;
-        let request = assistant::briefing_request(&db, lang, &done, chrono::Local::now(), model)?;
-        (provider, request)
+        (provider, build(&db, model)?)
     };
     let key = secrets::get(&provider.id)?;
     let workdir = app.path().app_cache_dir()?.join("cli");
@@ -541,6 +577,8 @@ pub fn run() {
             list_models,
             ask,
             briefing,
+            review_numbers,
+            review,
             chat,
             sort_mail,
             draft_reply,

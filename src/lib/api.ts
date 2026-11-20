@@ -108,6 +108,32 @@ export const logFocus = (session: FocusSession) => invoke<void>('log_focus', { s
 /** Seconds of focus in the sessions that ended at `since` (Unix seconds) or later. */
 export const focusTotal = (since: number) => invoke<number>('focus_total', { since })
 
+/** What a review looks back on: today, or the last seven days, today included. */
+export type Period = 'day' | 'week'
+
+/** The focus time one item got over a period. */
+export interface FocusTime {
+  itemId: number | null
+  title: string
+  /** The project or repository of the item, when it still exists and has one. */
+  project: string | null
+  seconds: number
+}
+
+/** The figures of a review, counted by the app itself. */
+export interface ReviewNumbers {
+  focus: {
+    /** Most time first. */
+    items: FocusTime[]
+    /** One entry per day of the period, oldest first. `start` is Unix seconds. */
+    days: { start: number; seconds: number }[]
+  }
+  /** Titles of the user's own tasks ticked off over the period. */
+  done: string[]
+}
+
+export const reviewNumbers = (period: Period) => invoke<ReviewNumbers>('review_numbers', { period })
+
 /**
  * Click handler for text written by a model: its links open in the browser, never inside the
  * app's own window.
@@ -246,6 +272,10 @@ export const sortMail = (requestId: string) => invoke<number>('sort_mail', { req
 /** Writes today's briefing with the strong model. `done` is what was already ticked off today. */
 export const briefing = (requestId: string, lang: 'en' | 'fr', done: string[]) =>
   invoke<Reply>('briefing', { requestId, lang, done })
+
+/** Writes the review of the day or of the last seven days with the strong model. */
+export const review = (requestId: string, lang: 'en' | 'fr', period: Period) =>
+  invoke<Reply>('review', { requestId, lang, period })
 
 /** Calls `handler` whenever stored items may have changed. Resolves to the function that stops it. */
 export const onItemsChanged = (handler: () => void): Promise<UnlistenFn> =>

@@ -274,13 +274,33 @@ pub fn create_local_event(conn: &Connection, event: &EventDraft) -> Result<i64> 
 }
 
 /// Changes the state of one of the user's own items. Items of a source are left alone:
-/// their state belongs to the source.
+/// their state belongs to the source. When it becomes "done", the time is kept in
+/// `meta.doneAt` for the reviews.
 pub fn set_local_state(conn: &Connection, id: i64, state: &str) -> Result<()> {
     conn.execute(
-        "UPDATE items SET state = ?3 WHERE id = ?1 AND source = ?2",
-        params![id, LOCAL_SOURCE, state],
+        "UPDATE items SET state = ?3,
+                meta = json_set(meta, '$.doneAt', CASE WHEN ?3 = 'done' THEN ?4 END)
+         WHERE id = ?1 AND source = ?2",
+        params![id, LOCAL_SOURCE, state, now()],
     )?;
     Ok(())
+}
+
+/// The user's own tasks ticked off at `since` (Unix seconds) or later.
+pub fn done_since(conn: &Connection, since: i64) -> Result<Vec<Item>> {
+    let tasks = list(
+        conn,
+        &Query {
+            kinds: vec![Kind::Task],
+            limit: Some(1000),
+            ..Query::default()
+        },
+    )?;
+    Ok(tasks
+        .into_iter()
+        .filter(|task| task.source == LOCAL_SOURCE && task.state == "done")
+        .filter(|task| task.meta["doneAt"].as_i64() >= Some(since))
+        .collect())
 }
 
 /// Deletes one of the user's own items. Items of a source cannot be deleted from here.
@@ -611,6 +631,23 @@ mod tests {
 
         delete_local(&conn, task).unwrap();
         assert_eq!(titles(&conn, Query::default()), ["Mail"]);
+    }
+
+    #[test]
+    fn a_ticked_task_remembers_when_until_it_is_unticked() {
+        let conn = open_in_memory();
+        let task = create_local(&conn, Kind::Task, "Call the bank").unwrap();
+        create_local(&conn, Kind::Task, "Not done").unwrap();
+        let before = now();
+
+        set_local_state(&conn, task, "done").unwrap();
+        let done = done_since(&conn, before).unwrap();
+        assert_eq!(done.len(), 1);
+        assert_eq!(done[0].title, "Call the bank");
+        assert!(done_since(&conn, now() + 60).unwrap().is_empty());
+
+        set_local_state(&conn, task, "todo").unwrap();
+        assert!(done_since(&conn, before).unwrap().is_empty());
     }
 
     #[test]

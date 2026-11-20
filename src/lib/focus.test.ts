@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { type FocusState, clock, duration, elapsed, toggled } from './focus'
+import { type FocusState, byProject, clock, duration, elapsed, toggled } from './focus'
 
 const running: FocusState = { itemId: null, title: '', startedAt: 1_000, spentMs: 0, runSince: 1_000 }
 
@@ -14,6 +14,21 @@ test('pauses are left out of the time counted', () => {
 
 test('a clock read before its own start counts nothing', () => {
   expect(elapsed(running, 900)).toBe(0)
+})
+
+test('times are gathered by project, the one that took the most first', () => {
+  const time = (title: string, project: string | null, seconds: number) => ({ itemId: 1, title, project, seconds })
+  const groups = byProject([
+    time('Login', 'Mobile', 900),
+    time('Reading', null, 1_000),
+    time('Signup', 'Mobile', 600),
+    time('', null, 100),
+  ])
+  expect(groups.map(group => [group.project, group.seconds])).toEqual([
+    ['Mobile', 1_500],
+    [null, 1_100],
+  ])
+  expect(groups[0].items.map(item => item.title)).toEqual(['Login', 'Signup'])
 })
 
 test('the clock shows hours only once there is one', () => {
