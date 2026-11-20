@@ -154,6 +154,16 @@ export const en = {
     states: { working: 'Working', idle: 'Waiting', done: 'Finished' },
     tool: 'Tool:',
   },
+  agent: {
+    on: 'Agent',
+    repository: 'Repository',
+    choose: 'Choose a repository',
+    start: 'Start',
+    cancel: 'Cancel',
+    hint: 'The agent opens in a terminal window, in this repository, with the ticket as its brief. You see it work, and it asks before it acts.',
+    noAgent: 'No coding agent is installed on this computer.',
+    noRepository: 'Choose a folder in the Code space first: an agent works in one of your repositories.',
+  },
   calendar: {
     previous: 'Previous month',
     next: 'Next month',

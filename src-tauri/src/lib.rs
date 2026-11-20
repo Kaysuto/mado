@@ -207,6 +207,27 @@ fn list_agent_sessions(app: AppHandle) -> Result<Vec<agents::Session>> {
     Ok(sessions)
 }
 
+/// The coding agents installed on this machine.
+#[tauri::command]
+fn list_agents() -> Vec<agents::Engine> {
+    agents::installed()
+}
+
+/// Starts a coding agent on a ticket, in one of the user's repositories, in a terminal window
+/// where the user sees it work. Nothing calls this but the user's own click on "Start".
+#[tauri::command]
+fn launch_agent(app: AppHandle, id: i64, path: &str, engine: agents::Engine) -> Result<()> {
+    let state = app.state::<State>();
+    let db = state.db();
+    let ticket = items::get(&db, id)?
+        .filter(|item| item.kind == items::Kind::Ticket)
+        .ok_or_else(|| Error::Message("This ticket no longer exists.".into()))?;
+    let repository = code::repository(&db, path)?;
+    let terminal = code::Tool::Terminal.command(&db)?;
+    let briefs = app.path().app_cache_dir()?.join("briefs");
+    agents::launch(engine, &ticket, &repository, &briefs, &terminal)
+}
+
 /// Lets the user pick a folder with the system's own dialog. `None` when they close it.
 // Not on the main thread, which the dialog needs free while this waits for it.
 #[tauri::command(async)]
@@ -650,6 +671,8 @@ pub fn run() {
             act_on_item,
             list_repositories,
             list_agent_sessions,
+            list_agents,
+            launch_agent,
             pick_folder,
             open_repository,
             list_sources,

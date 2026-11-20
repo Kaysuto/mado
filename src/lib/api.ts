@@ -185,9 +185,18 @@ export const listRepositories = () => invoke<Repository[]>('list_repositories')
 export const pickFolder = () => invoke<string | null>('pick_folder')
 export const openRepository = (path: string, tool: Tool) => invoke<void>('open_repository', { path, tool })
 
-/** A coding-agent session on this machine (mirrors `src-tauri/src/agents.rs`). */
+/** A coding agent Madow knows how to read and start (mirrors `src-tauri/src/agents.rs`). */
+export type Engine = 'claude_code' | 'codex'
+
+/** The agents installed on this machine. */
+export const listAgents = () => invoke<Engine[]>('list_agents')
+/** Starts an agent on a ticket, in a repository of the chosen folders, in a terminal window. */
+export const launchAgent = (id: number, path: string, engine: Engine) =>
+  invoke<void>('launch_agent', { id, path, engine })
+
+/** A coding-agent session on this machine. */
 export interface AgentSession {
-  engine: 'claude_code' | 'codex'
+  engine: Engine
   id: string
   /** Name of the folder the agent works in. */
   project: string

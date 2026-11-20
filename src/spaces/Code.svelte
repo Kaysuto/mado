@@ -14,9 +14,10 @@
     pickFolder,
     setSetting,
   } from '../lib/api'
-  import { checks, linked } from '../lib/code'
+  import { ENGINES, type Links, checks, linked } from '../lib/code'
   import { i18n } from '../lib/i18n.svelte'
   import { relativeTime } from '../lib/time'
+  import Launch from './Launch.svelte'
 
   let repositories = $state<Repository[] | null>(null)
   let items = $state<Item[]>([])
@@ -27,8 +28,9 @@
   let error = $state('')
   let sessions = $state<AgentSession[]>([])
   let now = $state(Date.now() / 1000)
-
-  const ENGINES = { claude_code: 'Claude Code', codex: 'Codex' }
+  let links = $state<Links>({})
+  /** The ticket an agent is being started on, and the repository it is shown under. */
+  let launching = $state<{ id: number; path: string } | null>(null)
 
   async function guard(action: () => Promise<void>) {
     try {
@@ -48,6 +50,8 @@
     sessions = await listAgentSessions().catch(() => sessions)
     now = Date.now() / 1000
   }
+
+  const loadLinks = () => guard(async () => void (links = (await getSetting<Links>('code.links')) ?? {}))
 
   /** Keeps the chosen folders, then looks into them again. */
   const keep = (next: string[]) =>
@@ -71,6 +75,7 @@
     })
     void load()
     void loadItems()
+    void loadLinks()
     void loadSessions()
     // Agents work while this screen is open: their sessions are read again every few seconds.
     const reading = setInterval(loadSessions, 15_000)
@@ -183,15 +188,32 @@
           </button>
         {/if}
       </div>
-      {#each linked(items, repository.remote) as item (item.id)}
+      {#each linked(items, repository, links) as item (item.id)}
+        {@const starting = launching?.id === item.id && launching.path === repository.path}
         {@const ci = checks(item)}
         <div class="row linked">
           <span class="ref">{item.meta.identifier ?? i18n.t.kinds[item.kind]}</span>
           <span class="title">{item.title}</span>
           {#if item.state}<span class="hint">{item.state}</span>{/if}
           {#if ci}<span class="ci {ci}">{i18n.t.code.checks[ci]}</span>{/if}
+          {#if item.kind === 'ticket' && repository.path && !starting}
+            <button class="btn" onclick={() => (launching = { id: item.id, path: repository.path })}>
+              {i18n.t.agent.on}
+            </button>
+          {/if}
           {#if item.url}
             <button class="btn" onclick={() => openPage(item.url)}>{i18n.t.open}</button>
+          {/if}
+          {#if starting}
+            <Launch
+              {item}
+              path={repository.path}
+              onclose={() => {
+                launching = null
+                void loadLinks()
+                void loadSessions()
+              }}
+            />
           {/if}
         </div>
       {/each}
