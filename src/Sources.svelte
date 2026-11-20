@@ -3,13 +3,14 @@
   import { type SourceKind, type SourceView, deleteSource, listSources, saveSource, syncNow } from './lib/api'
   import { i18n } from './lib/i18n.svelte'
 
-  const KINDS: SourceKind[] = ['github', 'linear', 'ical', 'imap', 'feed']
+  const KINDS: SourceKind[] = ['github', 'gitlab', 'linear', 'ical', 'imap', 'feed']
   /** Servers of common mail services, offered while typing. Any other IMAP server works too. */
   const MAIL_SERVERS = ['imap.gmail.com', 'imap.mail.me.com', 'imap.fastmail.com', 'imap.mail.yahoo.com', 'imap.gmx.com']
   /** Calendars have no brand: any service gives an iCal address. */
   const label = (kind: SourceKind) =>
     ({
       github: 'GitHub',
+      gitlab: 'GitLab',
       linear: 'Linear',
       ical: `${i18n.t.spaces.calendar} (iCal)`,
       imap: `${i18n.t.kinds.mail} (IMAP)`,
@@ -25,6 +26,7 @@
   let username = $state('')
   let smtpHost = $state('')
   let smtpPort = $state(465)
+  let instance = $state('') // address of a GitLab that is not gitlab.com
 
   /** Most services name the server that sends after the one that reads. */
   function suggestSmtp() {
@@ -66,7 +68,9 @@
       const options =
         kind === 'imap'
           ? { host: host.trim(), port, username: username.trim(), smtpHost: smtpHost.trim(), smtpPort }
-          : {}
+          : kind === 'gitlab'
+            ? { url: instance.trim() }
+            : {}
       await saveSource({ id: crypto.randomUUID(), kind, name: name.trim(), options }, token)
       token = ''
       await syncNow()
@@ -168,6 +172,15 @@
       aria-label={i18n.t.sources.smtpPort}
       required
       bind:value={smtpPort}
+    />
+  {/if}
+  {#if kind === 'gitlab'}
+    <input
+      class="field wide"
+      type="url"
+      placeholder={i18n.t.sources.instance}
+      aria-label={i18n.t.sources.instance}
+      bind:value={instance}
     />
   {/if}
   <input

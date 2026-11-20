@@ -4,6 +4,7 @@
 mod demo;
 mod feed;
 mod github;
+mod gitlab;
 mod ical;
 mod imap;
 mod linear;
@@ -73,6 +74,8 @@ pub enum Action {
 pub enum SourceKind {
     /// A forge and its issue tracker: merge requests, notifications, assigned issues.
     Github,
+    /// Another forge and its issue tracker. `options` say where the instance is.
+    Gitlab,
     /// A ticket tracker.
     Linear,
     /// A mailbox, over IMAP. Its "token" is the password; `options` say where it is.
@@ -135,6 +138,10 @@ pub fn configured(conn: &Connection) -> Result<Vec<Box<dyn Connector>>> {
         let token = secrets::get(&secret_name(&source.id))?;
         connectors.push(match source.kind {
             SourceKind::Github => Box::new(github::Github::new(source.id, token)),
+            SourceKind::Gitlab => {
+                let options = serde_json::from_value(source.options).unwrap_or_default();
+                Box::new(gitlab::Gitlab::new(source.id, options, token))
+            }
             SourceKind::Linear => Box::new(linear::Linear::new(source.id, token)),
             SourceKind::Ical => Box::new(ical::Ical::new(source.id, token)),
             SourceKind::Feed => Box::new(feed::Feed::new(source.id, token)),
