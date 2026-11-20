@@ -2,6 +2,7 @@ mod assistant;
 mod connectors;
 mod db;
 mod error;
+mod focus;
 mod http;
 mod items;
 mod llm;
@@ -99,6 +100,18 @@ fn delete_local(app: AppHandle, id: i64) -> Result<()> {
     items::delete_local(&app.state::<State>().db(), id)?;
     app.emit(sync::ITEMS_CHANGED, ())?;
     Ok(())
+}
+
+/// Records a focus session the user just finished.
+#[tauri::command]
+fn log_focus(state: tauri::State<'_, State>, session: focus::Session) -> Result<()> {
+    focus::record(&state.db(), &session)
+}
+
+/// Seconds of focus in the sessions that ended at `since` (Unix seconds) or later.
+#[tauri::command]
+fn focus_total(state: tauri::State<'_, State>, since: i64) -> Result<i64> {
+    focus::total_since(&state.db(), since)
 }
 
 /// Adds an event of the user's own to the calendar kept in Madow.
@@ -514,6 +527,8 @@ pub fn run() {
             create_event,
             event_page,
             draft_event,
+            log_focus,
+            focus_total,
             act_on_item,
             list_sources,
             save_source,

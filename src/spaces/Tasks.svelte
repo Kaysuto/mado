@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { type Item, createTask, deleteLocal, listItems, onItemsChanged, openPage, setTaskDone } from '../lib/api'
+  import { focus } from '../lib/focus.svelte'
   import { i18n } from '../lib/i18n.svelte'
   import { TASK_GROUPS, groupTasks } from '../lib/tasks'
   import { relativeTime } from '../lib/time'
@@ -76,6 +77,9 @@
           {#if !mine && item.state}<span class="hint">{item.state}</span>{/if}
           {#if item.endsAt}
             <span class="hint">{i18n.t.tasks.due} {relativeTime(item.endsAt, now, i18n.locale)}</span>
+          {/if}
+          {#if group !== 'done' && focus.session?.itemId !== item.id}
+            <button class="btn" onclick={() => guard(() => focus.start(item))}>{i18n.t.focus.on}</button>
           {/if}
           {#if item.url}
             <button class="btn" onclick={() => openPage(item.url)}>{i18n.t.open}</button>
