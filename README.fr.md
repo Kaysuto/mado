@@ -12,11 +12,14 @@ Aperçu : Madow s'utilise au quotidien mais reste jeune, et des choses bougeront
 - **Boîte** : mails, demandes de relecture, notifications et alertes dans une seule liste, triée par votre modèle rapide. Répondez à un mail à partir d'un brouillon que vous corrigez avant l'envoi.
 - **Tâches** : vos tâches et les tickets de vos outils de suivi, ensemble.
 - **Agenda** : vos agendas par mois, et de nouveaux événements écrits en langage naturel.
-- **Bilan** : le temps de focus par projet, et un bilan écrit du jour ou de la semaine.
+- **Code** : vos dépôts git avec leur état, leurs demandes de fusion, tickets et alertes de sécurité, et les sessions d'agents de code qui tournent sur votre machine. Lancez un agent sur un ticket, dans un terminal où vous le voyez travailler.
+- **Veille** : les articles des flux que vous suivez, à lire maintenant, plus tard ou jamais.
+- **Bilan** : le temps de focus par projet, vos commits, et un bilan écrit du jour ou de la semaine.
 - **Assistant** : un chat qui connaît votre journée, avec son historique.
 - **Focus** : un chrono lancé depuis n'importe quel élément.
+- **Barre d'état** : processeur, mémoire et disque, les agents au travail, et les serveurs qui ne répondent plus.
 
-Sources pour l'instant : toute boîte mail (IMAP/SMTP), les agendas par lien iCal, GitHub et Linear. Modèles : Claude Code ou Codex avec votre abonnement, une clé API (Anthropic ou tout service compatible OpenAI), ou un modèle local. Des données d'exemple sont intégrées, pour faire le tour avant de connecter quoi que ce soit.
+Sources pour l'instant : toute boîte mail (IMAP/SMTP), les agendas par lien iCal, GitHub et GitLab, Linear et Jira, les flux RSS et Atom, et des serveurs à surveiller. Modèles : Claude Code ou Codex avec votre abonnement, une clé API (Anthropic ou tout service compatible OpenAI), ou un modèle local. Des données d'exemple sont intégrées, pour faire le tour avant de connecter quoi que ce soit.
 
 Vos données restent sur votre machine. Le modèle n'a jamais d'outil dessus : Madow lit vos sources elle-même et lui donne du texte, et rien n'est envoyé ni créé sans votre clic.
 

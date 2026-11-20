@@ -147,11 +147,14 @@ mod tests {
     #[tokio::test]
     async fn a_port_that_accepts_gives_nothing_and_one_that_refuses_gives_an_alert() {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap().to_string();
-        assert_eq!(server(&address).sync().await.unwrap(), []);
+        let open = listener.local_addr().unwrap().to_string();
+        assert_eq!(server(&open).sync().await.unwrap(), []);
 
-        // Nothing listens on the port any more.
-        drop(listener);
+        // A port that is taken but does not listen refuses connections, and stays taken: no
+        // other test can open it in the meantime, as would happen with a port just freed.
+        let closed = tokio::net::TcpSocket::new_v4().unwrap();
+        closed.bind("127.0.0.1:0".parse().unwrap()).unwrap();
+        let address = closed.local_addr().unwrap().to_string();
         let alerts = server(&address).sync().await.unwrap();
         assert_eq!(alerts.len(), 1);
         let alert = &alerts[0];
