@@ -231,7 +231,7 @@ export const systemReading = () => invoke<SystemReading | null>('system_reading'
 
 // ---------- sources (types mirror `src-tauri/src/connectors/mod.rs`) ----------
 
-export type SourceKind = 'github' | 'gitlab' | 'linear' | 'jira' | 'ical' | 'imap' | 'feed'
+export type SourceKind = 'github' | 'gitlab' | 'linear' | 'jira' | 'ical' | 'imap' | 'feed' | 'server'
 
 export interface Source {
   id: string

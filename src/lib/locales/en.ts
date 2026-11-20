@@ -182,6 +182,7 @@ export const en = {
     free: 'free',
     gigabytes: 'GB',
     agents: 'Agents working:',
+    serversDown: 'Servers down:',
   },
   calendar: {
     previous: 'Previous month',
@@ -215,11 +216,13 @@ export const en = {
     confirmRemove: 'Confirm removal',
     service: 'Service',
     name: 'Name',
-    token: { github: 'Token (optional)', gitlab: 'Access token', linear: 'API key', jira: 'API token', ical: 'Secret iCal address', imap: 'Password or app password', feed: 'Feed address (https://…)' },
+    token: { github: 'Token (optional)', gitlab: 'Access token', linear: 'API key', jira: 'API token', ical: 'Secret iCal address', imap: 'Password or app password', feed: 'Feed address (https://…)', server: '' },
     server: 'Mail server (IMAP)',
+    serverKind: 'Server to watch',
     instance: {
       gitlab: 'Address of the instance (empty for gitlab.com)',
       jira: 'Address of the site (https://your-site.atlassian.net)',
+      server: 'Address (host:port, or https://…)',
     },
     port: 'Port',
     smtp: 'Sending server (SMTP, optional)',
@@ -228,6 +231,7 @@ export const en = {
     add: 'Add',
     sync: 'Sync now',
     hints: {
+      server: 'Madow checks every few minutes that the port accepts connections, or that the web address answers. A server that stops answering becomes an alert in the inbox and in the status bar, until it is back.',
       jira: 'For Jira Cloud. Create an API token in the security settings of your Atlassian account, and give the email address of that account. Madow reads the issues assigned to you that are not done.',
       gitlab: 'Create a personal access token with the read_api scope, in your GitLab preferences. Leave the address empty for gitlab.com; for an instance of your own, give its https address.',
       feed: 'One feed per source: paste the RSS or Atom address of a blog, a newspaper, a forum or a release page, and name it after the site. Madow keeps its 30 latest articles, to read in the News space.',

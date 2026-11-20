@@ -118,7 +118,7 @@
   {#if assistant}
     <Assistant onclose={toggleAssistant} />
   {/if}
-  <StatusBar oncode={() => show('code')} />
+  <StatusBar onshow={show} />
 </div>
 
 <style>

@@ -183,6 +183,7 @@ export const fr: typeof en = {
     free: 'libres',
     gigabytes: 'Go',
     agents: 'Agents en cours :',
+    serversDown: 'Serveurs hors ligne :',
   },
   calendar: {
     previous: 'Mois précédent',
@@ -216,11 +217,13 @@ export const fr: typeof en = {
     confirmRemove: 'Confirmer le retrait',
     service: 'Service',
     name: 'Nom',
-    token: { github: 'Jeton (facultatif)', gitlab: "Jeton d'accès", linear: 'Clé API', jira: 'Jeton API', ical: 'Adresse iCal secrète', imap: "Mot de passe ou mot de passe d'application", feed: 'Adresse du flux (https://…)' },
+    token: { github: 'Jeton (facultatif)', gitlab: "Jeton d'accès", linear: 'Clé API', jira: 'Jeton API', ical: 'Adresse iCal secrète', imap: "Mot de passe ou mot de passe d'application", feed: 'Adresse du flux (https://…)', server: '' },
     server: 'Serveur de messagerie (IMAP)',
+    serverKind: 'Serveur à surveiller',
     instance: {
       gitlab: "Adresse de l'instance (vide pour gitlab.com)",
       jira: 'Adresse du site (https://votre-site.atlassian.net)',
+      server: 'Adresse (hôte:port, ou https://…)',
     },
     port: 'Port',
     smtp: "Serveur d'envoi (SMTP, facultatif)",
@@ -229,6 +232,7 @@ export const fr: typeof en = {
     add: 'Ajouter',
     sync: 'Synchroniser',
     hints: {
+      server: "Madow vérifie toutes les quelques minutes que le port accepte les connexions, ou que l'adresse web répond. Un serveur qui ne répond plus devient une alerte dans la Boîte et dans la barre d'état, jusqu'à son retour.",
       jira: "Pour Jira Cloud. Créez un jeton API dans les réglages de sécurité de votre compte Atlassian, et indiquez l'adresse e-mail de ce compte. Madow lit les tickets qui vous sont assignés et ne sont pas terminés.",
       gitlab: "Créez un jeton d'accès personnel avec le droit read_api, dans vos préférences GitLab. Laissez l'adresse vide pour gitlab.com ; pour votre propre instance, indiquez son adresse en https.",
       feed: "Un flux par source : collez l'adresse RSS ou Atom d'un blog, d'un journal, d'un forum ou d'une page de versions, et donnez-lui le nom du site. Madow garde ses 30 derniers articles, à lire dans l'espace Veille.",
