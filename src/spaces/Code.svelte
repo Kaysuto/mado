@@ -194,7 +194,12 @@
         <div class="row linked">
           <span class="ref">{item.meta.identifier ?? i18n.t.kinds[item.kind]}</span>
           <span class="title">{item.title}</span>
-          {#if item.state}<span class="hint">{item.state}</span>{/if}
+          {#if item.kind === 'alert'}
+            <!-- How many alerts of each severity, in the words of the forge. -->
+            <span class="hint" class:serious={Boolean(item.meta.serious)}>{item.body}</span>
+          {:else if item.state}
+            <span class="hint">{item.state}</span>
+          {/if}
           {#if ci}<span class="ci {ci}">{i18n.t.code.checks[ci]}</span>{/if}
           {#if item.kind === 'ticket' && repository.path && !starting}
             <button class="btn" onclick={() => (launching = { id: item.id, path: repository.path })}>
@@ -327,6 +332,7 @@
     color: var(--ok);
   }
   .ci.failed,
+  .serious,
   .error {
     color: var(--danger);
   }

@@ -194,6 +194,19 @@ impl Connector for Demo {
                 ends_at: Some(start + length),
                 meta: json!({ "allDay": all_day, "location": place, "link": null }),
             };
+        // What a forge says about the dependencies of a repository.
+        items.push(NewItem {
+            external_id: "alerts-docs".into(),
+            kind: Kind::Alert,
+            title: "marked, glob-parent".into(),
+            body: "1 high, 1 moderate".into(),
+            author: Some("acme/docs".into()),
+            url: None,
+            state: "high".into(),
+            occurred_at: now - 2 * DAY,
+            ends_at: None,
+            meta: json!({ "repository": "acme/docs", "count": 2, "serious": 1 }),
+        });
         items.extend([
             event(
                 "event-2",
