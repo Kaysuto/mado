@@ -5,10 +5,12 @@
   import { i18n } from '../lib/i18n.svelte'
   import { TASK_GROUPS, groupTasks } from '../lib/tasks'
   import { relativeTime } from '../lib/time'
+  import Launch from './Launch.svelte'
 
   let items = $state<Item[]>([])
   let title = $state('')
   let error = $state('')
+  let launching = $state<number | null>(null) // the ticket an agent is being started on
   const groups = $derived(groupTasks(items))
   const now = Date.now() / 1000
 
@@ -81,11 +83,17 @@
           {#if group !== 'done' && focus.session?.itemId !== item.id}
             <button class="btn" onclick={() => guard(() => focus.start(item))}>{i18n.t.focus.on}</button>
           {/if}
+          {#if item.kind === 'ticket' && launching !== item.id}
+            <button class="btn" onclick={() => (launching = item.id)}>{i18n.t.agent.on}</button>
+          {/if}
           {#if item.url}
             <button class="btn" onclick={() => openPage(item.url)}>{i18n.t.open}</button>
           {/if}
           {#if mine}
             <button class="btn" onclick={() => guard(() => deleteLocal(item.id))}>{i18n.t.tasks.delete}</button>
+          {/if}
+          {#if launching === item.id}
+            <Launch {item} onclose={() => (launching = null)} />
           {/if}
         </li>
       {/each}
@@ -121,6 +129,7 @@
   }
   li {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 12px;
     padding: 10px 8px;

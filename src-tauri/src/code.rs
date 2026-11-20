@@ -165,7 +165,7 @@ pub enum Tool {
 
 impl Tool {
     /// The command the user set for this tool, or the usual one. It runs in the repository.
-    fn command(self, conn: &Connection) -> Result<String> {
+    pub fn command(self, conn: &Connection) -> Result<String> {
         let (setting, usual) = match self {
             Tool::Editor => ("code.editor", "code ."),
             Tool::Terminal if cfg!(windows) => ("code.terminal", "wt -d ."),
@@ -181,13 +181,19 @@ impl Tool {
     }
 }
 
-/// Opens one of the user's repositories with their editor or terminal. `path` must be a
-/// repository of the chosen folders: nothing else can be opened from the interface.
-pub fn open(conn: &Connection, path: &str, tool: Tool) -> Result<()> {
+/// `path` as a repository of the chosen folders: nothing else can be opened or worked in
+/// from the interface.
+pub fn repository(conn: &Connection, path: &str) -> Result<PathBuf> {
     let path = Path::new(path);
     if !find(&folders(conn)?).iter().any(|found| found == path) {
         return Err(Error::Message("This repository is no longer there.".into()));
     }
+    Ok(path.to_owned())
+}
+
+/// Opens one of the user's repositories with their editor or terminal.
+pub fn open(conn: &Connection, path: &str, tool: Tool) -> Result<()> {
+    let path = repository(conn, path)?;
     let line = tool.command(conn)?;
     // shortcut: words are split on spaces, so a program path with a space cannot be set;
     // read quotes if someone needs one.

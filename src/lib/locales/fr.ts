@@ -155,6 +155,16 @@ export const fr: typeof en = {
     states: { working: 'En cours', idle: 'En attente', done: 'Terminée' },
     tool: 'Outil :',
   },
+  agent: {
+    on: 'Agent',
+    repository: 'Dépôt',
+    choose: 'Choisir un dépôt',
+    start: 'Lancer',
+    cancel: 'Annuler',
+    hint: "L'agent s'ouvre dans une fenêtre de terminal, dans ce dépôt, avec le ticket pour consigne. Vous le voyez travailler, et il demande avant d'agir.",
+    noAgent: "Aucun agent de code n'est installé sur cet ordinateur.",
+    noRepository: "Choisissez d'abord un dossier dans l'espace Code : un agent travaille dans l'un de vos dépôts.",
+  },
   calendar: {
     previous: 'Mois précédent',
     next: 'Mois suivant',
