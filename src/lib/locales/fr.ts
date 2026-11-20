@@ -166,6 +166,15 @@ export const fr: typeof en = {
     noAgent: "Aucun agent de code n'est installé sur cet ordinateur.",
     noRepository: "Choisissez d'abord un dossier dans l'espace Code : un agent travaille dans l'un de vos dépôts.",
   },
+  news: {
+    unread: 'À lire',
+    later: 'Plus tard',
+    read: 'Lus',
+    markRead: 'Lu',
+    restore: 'Remettre à lire',
+    empty: 'Rien ici.',
+    noFeed: "Aucun flux n'est encore suivi. Ajoutez l'adresse RSS ou Atom d'un site dans les réglages.",
+  },
   calendar: {
     previous: 'Mois précédent',
     next: 'Mois suivant',
@@ -198,7 +207,7 @@ export const fr: typeof en = {
     confirmRemove: 'Confirmer le retrait',
     service: 'Service',
     name: 'Nom',
-    token: { github: 'Jeton (facultatif)', linear: 'Clé API', ical: 'Adresse iCal secrète', imap: "Mot de passe ou mot de passe d'application" },
+    token: { github: 'Jeton (facultatif)', linear: 'Clé API', ical: 'Adresse iCal secrète', imap: "Mot de passe ou mot de passe d'application", feed: 'Adresse du flux (https://…)' },
     server: 'Serveur de messagerie (IMAP)',
     port: 'Port',
     smtp: "Serveur d'envoi (SMTP, facultatif)",
@@ -207,6 +216,7 @@ export const fr: typeof en = {
     add: 'Ajouter',
     sync: 'Synchroniser',
     hints: {
+      feed: "Un flux par source : collez l'adresse RSS ou Atom d'un blog, d'un journal, d'un forum ou d'une page de versions, et donnez-lui le nom du site. Madow garde ses 30 derniers articles, à lire dans l'espace Veille.",
       github:
         "Laissez le jeton vide pour utiliser la connexion de l'outil GitHub CLI (gh), s'il est installé. Sinon, créez un jeton d'accès personnel qui peut lire vos dépôts et vos notifications.",
       linear: 'Créez une clé API personnelle dans Linear, dans Réglages, Sécurité et accès.',

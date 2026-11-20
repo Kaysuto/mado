@@ -218,7 +218,7 @@ export const listAgentSessions = () => invoke<AgentSession[]>('list_agent_sessio
 
 // ---------- sources (types mirror `src-tauri/src/connectors/mod.rs`) ----------
 
-export type SourceKind = 'github' | 'linear' | 'ical' | 'imap'
+export type SourceKind = 'github' | 'linear' | 'ical' | 'imap' | 'feed'
 
 export interface Source {
   id: string

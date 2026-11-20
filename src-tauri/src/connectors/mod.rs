@@ -2,6 +2,7 @@
 //! The rest of the app only ever sees items, so it never depends on a particular service.
 
 mod demo;
+mod feed;
 mod github;
 mod ical;
 mod imap;
@@ -78,6 +79,8 @@ pub enum SourceKind {
     Imap,
     /// A calendar, read from its iCalendar feed. Its "token" is the feed's secret address.
     Ical,
+    /// A news feed (RSS, Atom). Its "token" is the feed's address.
+    Feed,
 }
 
 /// A source the user has connected. Its token, if any, is in the keychain.
@@ -134,6 +137,7 @@ pub fn configured(conn: &Connection) -> Result<Vec<Box<dyn Connector>>> {
             SourceKind::Github => Box::new(github::Github::new(source.id, token)),
             SourceKind::Linear => Box::new(linear::Linear::new(source.id, token)),
             SourceKind::Ical => Box::new(ical::Ical::new(source.id, token)),
+            SourceKind::Feed => Box::new(feed::Feed::new(source.id, token)),
             SourceKind::Imap => {
                 let options = serde_json::from_value(source.options).unwrap_or_default();
                 Box::new(imap::Imap::new(source.id, options, token))

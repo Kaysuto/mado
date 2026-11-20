@@ -9,6 +9,7 @@
   import Calendar from './spaces/Calendar.svelte'
   import Code from './spaces/Code.svelte'
   import Inbox from './spaces/Inbox.svelte'
+  import News from './spaces/News.svelte'
   import Review from './spaces/Review.svelte'
   import Tasks from './spaces/Tasks.svelte'
   import Today from './spaces/Today.svelte'
@@ -101,6 +102,8 @@
       <Tasks />
     {:else if view === 'code'}
       <Code />
+    {:else if view === 'news'}
+      <News onsettings={() => show('settings')} />
     {:else if view === 'review'}
       <Review onsettings={() => show('settings')} />
     {:else if view === 'settings'}

@@ -3,12 +3,18 @@
   import { type SourceKind, type SourceView, deleteSource, listSources, saveSource, syncNow } from './lib/api'
   import { i18n } from './lib/i18n.svelte'
 
-  const KINDS: SourceKind[] = ['github', 'linear', 'ical', 'imap']
+  const KINDS: SourceKind[] = ['github', 'linear', 'ical', 'imap', 'feed']
   /** Servers of common mail services, offered while typing. Any other IMAP server works too. */
   const MAIL_SERVERS = ['imap.gmail.com', 'imap.mail.me.com', 'imap.fastmail.com', 'imap.mail.yahoo.com', 'imap.gmx.com']
   /** Calendars have no brand: any service gives an iCal address. */
   const label = (kind: SourceKind) =>
-    ({ github: 'GitHub', linear: 'Linear', ical: `${i18n.t.spaces.calendar} (iCal)`, imap: `${i18n.t.kinds.mail} (IMAP)` })[kind]
+    ({
+      github: 'GitHub',
+      linear: 'Linear',
+      ical: `${i18n.t.spaces.calendar} (iCal)`,
+      imap: `${i18n.t.kinds.mail} (IMAP)`,
+      feed: `${i18n.t.spaces.news} (RSS, Atom)`,
+    })[kind]
 
   let sources = $state<SourceView[]>([])
   let kind = $state<SourceKind>('github')
@@ -29,7 +35,8 @@
   let armed = $state('') // id of the source whose removal waits for a second click
 
   $effect(() => {
-    name = kind === 'ical' ? i18n.t.spaces.calendar : kind === 'imap' ? i18n.t.kinds.mail : label(kind)
+    // A source that has no brand is named after what it brings; the user renames it.
+    name = { ical: i18n.t.spaces.calendar, imap: i18n.t.kinds.mail, feed: i18n.t.spaces.news }[kind as string] ?? label(kind)
     token = ''
   })
 
@@ -165,7 +172,7 @@
   {/if}
   <input
     class="field wide"
-    type="password"
+    type={kind === 'feed' ? 'url' : 'password'}
     autocomplete="off"
     placeholder={i18n.t.sources.token[kind]}
     aria-label={i18n.t.sources.token[kind]}
