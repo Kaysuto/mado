@@ -2678,7 +2678,9 @@ dependencies = [
  "tokio-rustls",
  "webpki-roots",
  "which",
+ "windows",
  "wiremock",
+ "zbus",
 ]
 
 [[package]]

@@ -184,6 +184,10 @@ export const fr: typeof en = {
     gigabytes: 'Go',
     agents: 'Agents en cours :',
     serversDown: 'Serveurs hors ligne :',
+    previous: 'Piste précédente',
+    play: 'Lecture',
+    pause: 'Pause',
+    next: 'Piste suivante',
   },
   calendar: {
     previous: 'Mois précédent',
