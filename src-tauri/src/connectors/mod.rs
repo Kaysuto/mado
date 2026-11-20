@@ -7,6 +7,7 @@ mod github;
 mod gitlab;
 mod ical;
 mod imap;
+mod jira;
 mod linear;
 mod smtp;
 
@@ -78,6 +79,8 @@ pub enum SourceKind {
     Gitlab,
     /// A ticket tracker.
     Linear,
+    /// Another ticket tracker. `options` say where the site is and who signs in.
+    Jira,
     /// A mailbox, over IMAP. Its "token" is the password; `options` say where it is.
     Imap,
     /// A calendar, read from its iCalendar feed. Its "token" is the feed's secret address.
@@ -143,6 +146,10 @@ pub fn configured(conn: &Connection) -> Result<Vec<Box<dyn Connector>>> {
                 Box::new(gitlab::Gitlab::new(source.id, options, token))
             }
             SourceKind::Linear => Box::new(linear::Linear::new(source.id, token)),
+            SourceKind::Jira => {
+                let options = serde_json::from_value(source.options).unwrap_or_default();
+                Box::new(jira::Jira::new(source.id, options, token))
+            }
             SourceKind::Ical => Box::new(ical::Ical::new(source.id, token)),
             SourceKind::Feed => Box::new(feed::Feed::new(source.id, token)),
             SourceKind::Imap => {

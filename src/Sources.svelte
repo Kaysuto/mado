@@ -3,7 +3,7 @@
   import { type SourceKind, type SourceView, deleteSource, listSources, saveSource, syncNow } from './lib/api'
   import { i18n } from './lib/i18n.svelte'
 
-  const KINDS: SourceKind[] = ['github', 'gitlab', 'linear', 'ical', 'imap', 'feed']
+  const KINDS: SourceKind[] = ['github', 'gitlab', 'linear', 'jira', 'ical', 'imap', 'feed']
   /** Servers of common mail services, offered while typing. Any other IMAP server works too. */
   const MAIL_SERVERS = ['imap.gmail.com', 'imap.mail.me.com', 'imap.fastmail.com', 'imap.mail.yahoo.com', 'imap.gmx.com']
   /** Calendars have no brand: any service gives an iCal address. */
@@ -12,6 +12,7 @@
       github: 'GitHub',
       gitlab: 'GitLab',
       linear: 'Linear',
+      jira: 'Jira',
       ical: `${i18n.t.spaces.calendar} (iCal)`,
       imap: `${i18n.t.kinds.mail} (IMAP)`,
       feed: `${i18n.t.spaces.news} (RSS, Atom)`,
@@ -26,7 +27,7 @@
   let username = $state('')
   let smtpHost = $state('')
   let smtpPort = $state(465)
-  let instance = $state('') // address of a GitLab that is not gitlab.com
+  let instance = $state('') // address of a GitLab that is not gitlab.com, or of a Jira site
 
   /** Most services name the server that sends after the one that reads. */
   function suggestSmtp() {
@@ -70,7 +71,9 @@
           ? { host: host.trim(), port, username: username.trim(), smtpHost: smtpHost.trim(), smtpPort }
           : kind === 'gitlab'
             ? { url: instance.trim() }
-            : {}
+            : kind === 'jira'
+              ? { url: instance.trim(), email: username.trim() }
+              : {}
       await saveSource({ id: crypto.randomUUID(), kind, name: name.trim(), options }, token)
       token = ''
       await syncNow()
@@ -174,13 +177,25 @@
       bind:value={smtpPort}
     />
   {/if}
-  {#if kind === 'gitlab'}
+  {#if kind === 'gitlab' || kind === 'jira'}
     <input
       class="field wide"
       type="url"
-      placeholder={i18n.t.sources.instance}
-      aria-label={i18n.t.sources.instance}
+      placeholder={i18n.t.sources.instance[kind]}
+      aria-label={i18n.t.sources.instance[kind]}
+      required={kind === 'jira'}
       bind:value={instance}
+    />
+  {/if}
+  {#if kind === 'jira'}
+    <input
+      class="field wide"
+      type="email"
+      autocomplete="off"
+      placeholder={i18n.t.sources.user}
+      aria-label={i18n.t.sources.user}
+      required
+      bind:value={username}
     />
   {/if}
   <input
