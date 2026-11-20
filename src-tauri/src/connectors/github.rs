@@ -1,5 +1,6 @@
 //! GitHub, as a forge and a tracker: open pull requests the user wrote or must review,
-//! issues assigned to them, and unread notifications.
+//! issues assigned to them, unread notifications, and the open security alerts of their
+//! repositories.
 
 use super::{Connector, REQUEST_LIMIT, excerpt, parse_time, unreachable};
 use crate::{
@@ -38,6 +39,23 @@ fragment pull on PullRequest {
 }
 "#;
 
+/// The open dependency alerts of the repositories the user owns or works on.
+const ALERTS: &str = r#"
+query {
+  viewer {
+    repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER], isArchived: false) {
+      nodes {
+        nameWithOwner url
+        vulnerabilityAlerts(states: OPEN, first: 100) {
+          totalCount
+          nodes { createdAt securityVulnerability { severity package { name } } }
+        }
+      }
+    }
+  }
+}
+"#;
+
 pub struct Github {
     source: String,
     base: String,
@@ -68,6 +86,22 @@ impl Github {
             .bearer_auth(token)
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
+    }
+}
+
+impl Github {
+    /// The whole answer to a GraphQL query, its `errors` included.
+    async fn graphql(&self, query: &str, token: &str) -> Result<Value, String> {
+        let response = self
+            .request(reqwest::Method::POST, "/graphql", token)
+            .json(&json!({ "query": query }))
+            .send()
+            .await
+            .map_err(unreachable)?;
+        if !response.status().is_success() {
+            return Err(failure(response).await);
+        }
+        response.json().await.map_err(unreachable)
     }
 }
 
@@ -107,20 +141,16 @@ impl Connector for Github {
     async fn sync(&self) -> Result<Vec<NewItem>, String> {
         let token = self.token().await?;
 
-        let response = self
-            .request(reqwest::Method::POST, "/graphql", &token)
-            .json(&json!({ "query": QUERY }))
-            .send()
-            .await
-            .map_err(unreachable)?;
-        if !response.status().is_success() {
-            return Err(failure(response).await);
-        }
-        let answer: Value = response.json().await.map_err(unreachable)?;
+        let answer = self.graphql(QUERY, &token).await?;
         if let Some(message) = answer["errors"][0]["message"].as_str() {
             return Err(format!("GitHub: {message}"));
         }
         let mut items = work_items(&answer["data"]);
+
+        // Errors are not looked at here: a token that may not read the alerts of a repository
+        // gets an error for it, and the alerts of the others.
+        let answer = self.graphql(ALERTS, &token).await?;
+        items.extend(alert_items(&answer["data"]));
 
         let response = self
             .request(reqwest::Method::GET, "/notifications?per_page=50", &token)
@@ -203,6 +233,79 @@ fn work_items(data: &Value) -> Vec<NewItem> {
                 // Same vocabulary as the trackers: an open issue is work not started.
                 "stateType": "unstarted",
             }),
+        });
+    }
+    items
+}
+
+/// One alert per repository that has open dependency alerts: which packages, how many of
+/// each severity. A repository with many alerts is still one line of the inbox.
+fn alert_items(data: &Value) -> Vec<NewItem> {
+    const SEVERITIES: [&str; 4] = ["CRITICAL", "HIGH", "MODERATE", "LOW"];
+    let repositories = data["viewer"]["repositories"]["nodes"].as_array();
+    let mut items = Vec::new();
+    for repository in repositories.into_iter().flatten() {
+        let (Some(name), Some(url)) = (
+            repository["nameWithOwner"].as_str(),
+            repository["url"].as_str(),
+        ) else {
+            continue;
+        };
+        let alerts = &repository["vulnerabilityAlerts"];
+        let count = alerts["totalCount"].as_u64().unwrap_or(0);
+        if count == 0 {
+            continue;
+        }
+        let severity = |alert: &Value| {
+            let severity = alert["securityVulnerability"]["severity"].as_str();
+            SEVERITIES.iter().position(|known| Some(*known) == severity)
+        };
+        // The worst first; an unknown severity last.
+        let mut alerts: Vec<&Value> = alerts["nodes"].as_array().into_iter().flatten().collect();
+        alerts.sort_by_key(|alert| severity(alert).unwrap_or(SEVERITIES.len()));
+
+        let mut packages: Vec<&str> = Vec::new();
+        for alert in &alerts {
+            let package = alert["securityVulnerability"]["package"]["name"].as_str();
+            if let Some(package) = package.filter(|package| !packages.contains(package)) {
+                packages.push(package);
+            }
+        }
+        let more = packages.len().saturating_sub(4);
+        let mut title = packages[..packages.len() - more].join(", ");
+        if more > 0 {
+            title.push_str(&format!(" +{more}"));
+        }
+        let counted = |rank: usize| {
+            alerts
+                .iter()
+                .filter(|alert| severity(alert) == Some(rank))
+                .count()
+        };
+        // "1 critical, 2 high": the severities in GitHub's own words.
+        let counts: Vec<String> = (0..SEVERITIES.len())
+            .filter(|rank| counted(*rank) > 0)
+            .map(|rank| format!("{} {}", counted(rank), SEVERITIES[rank].to_lowercase()))
+            .collect();
+        let worst = alerts.first().and_then(|alert| severity(alert));
+        items.push(NewItem {
+            external_id: format!("alerts:{name}"),
+            kind: Kind::Alert,
+            title,
+            body: counts.join(", "),
+            author: Some(name.into()),
+            url: Some(format!("{url}/security/dependabot")),
+            state: worst
+                .map(|rank| SEVERITIES[rank].to_lowercase())
+                .unwrap_or_default(),
+            // The latest alert: the item only moves up when a new one opens.
+            occurred_at: alerts
+                .iter()
+                .filter_map(|alert| alert["createdAt"].as_str().and_then(parse_time))
+                .max()
+                .unwrap_or(0),
+            ends_at: None,
+            meta: json!({ "repository": name, "count": count, "serious": counted(0) + counted(1) }),
         });
     }
     items
@@ -325,6 +428,60 @@ mod tests {
     }
 
     #[test]
+    fn open_alerts_become_one_item_per_repository_worst_first() {
+        let alert = |severity: &str, package: &str, created: &str| {
+            json!({ "createdAt": created, "securityVulnerability": {
+                "severity": severity, "package": { "name": package },
+            } })
+        };
+        let repository = |name: &str, alerts: Value| {
+            let total = alerts.as_array().map_or(0, Vec::len);
+            json!({
+                "nameWithOwner": name, "url": format!("https://github.com/{name}"),
+                "vulnerabilityAlerts": { "totalCount": total, "nodes": alerts },
+            })
+        };
+        let data = json!({ "viewer": { "repositories": { "nodes": [
+            repository("acme/clean", json!([])),
+            repository("acme/app", json!([
+                alert("MODERATE", "glib", "2026-11-01T10:00:00Z"),
+                alert("HIGH", "openssl", "2026-11-03T10:00:00Z"),
+                alert("MODERATE", "glib", "2026-11-02T10:00:00Z"),
+                alert("CRITICAL", "lodash", "2026-10-20T10:00:00Z"),
+            ])),
+            // What a token that may not read the alerts of a repository gets for it.
+            { "nameWithOwner": "acme/secret", "url": "https://github.com/acme/secret", "vulnerabilityAlerts": null },
+        ] } } });
+
+        let items = alert_items(&data);
+        assert_eq!(items.len(), 1);
+        let item = &items[0];
+        assert_eq!(
+            (item.kind, item.external_id.as_str()),
+            (Kind::Alert, "alerts:acme/app")
+        );
+        assert_eq!(item.title, "lodash, openssl, glib");
+        assert_eq!(item.body, "1 critical, 1 high, 2 moderate");
+        assert_eq!(
+            (item.state.as_str(), item.author.as_deref()),
+            ("critical", Some("acme/app"))
+        );
+        assert_eq!(
+            item.url.as_deref(),
+            Some("https://github.com/acme/app/security/dependabot")
+        );
+        assert_eq!(
+            item.occurred_at,
+            parse_time("2026-11-03T10:00:00Z").unwrap()
+        );
+        assert_eq!(
+            item.meta,
+            json!({ "repository": "acme/app", "count": 4, "serious": 2 })
+        );
+        assert_eq!(alert_items(&json!(null)), []);
+    }
+
+    #[test]
     fn notifications_link_to_the_page_not_the_api() {
         let items = notification_items(&json!([
             {
@@ -382,10 +539,11 @@ mod tests {
         let items = Github::new("gh".into(), None).sync().await.unwrap();
         let count = |kind| items.iter().filter(|i| i.kind == kind).count();
         println!(
-            "merge requests: {}, tickets: {}, notifications: {}",
+            "merge requests: {}, tickets: {}, notifications: {}, repositories with alerts: {}",
             count(Kind::MergeRequest),
             count(Kind::Ticket),
-            count(Kind::Notification)
+            count(Kind::Notification),
+            count(Kind::Alert)
         );
         assert!(
             items
