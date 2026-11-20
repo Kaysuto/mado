@@ -165,6 +165,15 @@ export const en = {
     noAgent: 'No coding agent is installed on this computer.',
     noRepository: 'Choose a folder in the Code space first: an agent works in one of your repositories.',
   },
+  news: {
+    unread: 'To read',
+    later: 'Later',
+    read: 'Read',
+    markRead: 'Read',
+    restore: 'Back to read',
+    empty: 'Nothing here.',
+    noFeed: 'No feed is followed yet. Add the RSS or Atom address of a site in the settings.',
+  },
   calendar: {
     previous: 'Previous month',
     next: 'Next month',
@@ -197,7 +206,7 @@ export const en = {
     confirmRemove: 'Confirm removal',
     service: 'Service',
     name: 'Name',
-    token: { github: 'Token (optional)', linear: 'API key', ical: 'Secret iCal address', imap: 'Password or app password' },
+    token: { github: 'Token (optional)', linear: 'API key', ical: 'Secret iCal address', imap: 'Password or app password', feed: 'Feed address (https://…)' },
     server: 'Mail server (IMAP)',
     port: 'Port',
     smtp: 'Sending server (SMTP, optional)',
@@ -206,6 +215,7 @@ export const en = {
     add: 'Add',
     sync: 'Sync now',
     hints: {
+      feed: 'One feed per source: paste the RSS or Atom address of a blog, a newspaper, a forum or a release page, and name it after the site. Madow keeps its 30 latest articles, to read in the News space.',
       github:
         'Leave the token empty to use the sign-in of the GitHub CLI (gh), if it is installed. Otherwise create a personal access token that can read your repositories and notifications.',
       linear: 'Create a personal API key in Linear, under Settings, Security & access.',

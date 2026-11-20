@@ -19,6 +19,7 @@ tauri-build = { version = "2.7.5" }
 async-imap = { version = "0.12.0", default-features = false, features = ["runtime-tokio"] }
 async-trait = "0.1.92"
 chrono = "0.4.45"
+feed-rs = "3.0.0"
 futures = "0.3.34"
 icalendar = { version = "0.17.17", features = ["parser", "recurrence"] }
 keyring = "4.2.0"
