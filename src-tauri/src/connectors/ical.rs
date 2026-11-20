@@ -4,7 +4,7 @@
 use super::{Connector, REQUEST_LIMIT, excerpt, unreachable};
 use crate::{
     http::client,
-    items::{Kind, NewItem, now},
+    items::{EventDraft, Kind, NewItem, now},
 };
 use async_trait::async_trait;
 use chrono::{Local, NaiveDateTime, TimeZone};
@@ -73,6 +73,33 @@ impl Connector for Ical {
         let feed = response.text().await.map_err(unreachable)?;
         let now = now();
         events(&feed, now - PAST, now + AHEAD)
+    }
+
+    fn event_page(&self, event: &EventDraft) -> Option<String> {
+        // A feed is read-only. This service is the one known to have a page that creates an
+        // event from its address; with any other, the event is kept in Madow.
+        if !self.address.as_deref()?.contains("://calendar.google.com/") {
+            return None;
+        }
+        let (start, end) = event.span().ok()?;
+        // Without a zone, the page reads the times in the calendar's own one.
+        let stamp = if event.all_day {
+            "%Y%m%d"
+        } else {
+            "%Y%m%dT%H%M%S"
+        };
+        let dates = format!("{}/{}", start.format(stamp), end.format(stamp));
+        reqwest::Url::parse_with_params(
+            "https://calendar.google.com/calendar/render",
+            [
+                ("action", "TEMPLATE"),
+                ("text", event.title.trim()),
+                ("dates", &dates),
+                ("location", event.location.trim()),
+            ],
+        )
+        .ok()
+        .map(String::from)
     }
 }
 
@@ -213,6 +240,43 @@ mod tests {
     use super::*;
 
     const HOUR: i64 = 3_600;
+
+    #[test]
+    fn only_a_calendar_known_to_have_a_creation_page_gives_one() {
+        let lunch = EventDraft {
+            title: " Lunch & talk ".into(),
+            start: "2026-11-26T12:30".into(),
+            end: "2026-11-26T13:30".into(),
+            all_day: false,
+            location: "Le Bistro".into(),
+        };
+        let calendar = |address: &str| Ical::new("a".into(), Some(address.into()));
+        let known = calendar("webcal://calendar.google.com/calendar/ical/someone/basic.ics");
+        assert_eq!(
+            known.event_page(&lunch).as_deref(),
+            Some(
+                "https://calendar.google.com/calendar/render?action=TEMPLATE&text=Lunch+%26+talk&dates=20261126T123000%2F20261126T133000&location=Le+Bistro"
+            )
+        );
+        // A whole-day event ends the day after its last day.
+        let trip = EventDraft {
+            start: "2026-11-26".into(),
+            end: "2026-11-27".into(),
+            all_day: true,
+            ..lunch.clone()
+        };
+        assert!(
+            known
+                .event_page(&trip)
+                .unwrap()
+                .contains("&dates=20261126%2F20261128&")
+        );
+        assert_eq!(
+            calendar("https://example.com/feed.ics").event_page(&lunch),
+            None
+        );
+        assert_eq!(Ical::new("b".into(), None).event_page(&lunch), None);
+    }
 
     fn feed(events: &str) -> String {
         format!("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:test\r\n{events}END:VCALENDAR\r\n")

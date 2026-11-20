@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { type Item, listItems, onItemsChanged, openPage } from '../lib/api'
+  import { type Item, deleteLocal, listItems, onItemsChanged, openPage } from '../lib/api'
   import { addDays, eventsOn, formatWhen, isSingleDay, monthGrid, startOfDay } from '../lib/calendar'
   import { i18n } from '../lib/i18n.svelte'
+  import NewEvent from './NewEvent.svelte'
 
   const today = startOfDay(new Date())
   let month = $state(new Date(today.getFullYear(), today.getMonth(), 1))
@@ -108,6 +109,7 @@
 
   <section aria-label={dayName}>
     <h2>{dayName}</h2>
+    <NewEvent day={selected} onadded={pick} />
     {#if agenda.length === 0}
       <p class="hint">{i18n.t.calendar.free}</p>
     {/if}
@@ -135,6 +137,11 @@
           {/if}
           {#if event.url}
             <button class="btn" onclick={() => openPage(event.url)}>{i18n.t.open}</button>
+          {/if}
+          {#if event.source === 'local'}
+            <button class="btn" onclick={() => deleteLocal(event.id).catch(cause => (error = String(cause)))}>
+              {i18n.t.calendar.delete}
+            </button>
           {/if}
         </li>
       {/each}

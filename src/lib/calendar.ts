@@ -12,6 +12,12 @@ export function addDays(date: Date, days: number): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days)
 }
 
+/** The day as date fields write it: `2026-11-26`, in local time. */
+export function dayKey(date: Date): string {
+  const two = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`
+}
+
 /** The 42 days shown for a month: six weeks from the Monday on or before the 1st. */
 export function monthGrid(year: number, month: number): Date[] {
   const first = new Date(year, month, 1)

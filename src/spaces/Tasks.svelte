@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { type Item, createTask, deleteTask, listItems, onItemsChanged, openPage, setTaskDone } from '../lib/api'
+  import { type Item, createTask, deleteLocal, listItems, onItemsChanged, openPage, setTaskDone } from '../lib/api'
   import { i18n } from '../lib/i18n.svelte'
   import { TASK_GROUPS, groupTasks } from '../lib/tasks'
   import { relativeTime } from '../lib/time'
@@ -81,7 +81,7 @@
             <button class="btn" onclick={() => openPage(item.url)}>{i18n.t.open}</button>
           {/if}
           {#if mine}
-            <button class="btn" onclick={() => guard(() => deleteTask(item.id))}>{i18n.t.tasks.delete}</button>
+            <button class="btn" onclick={() => guard(() => deleteLocal(item.id))}>{i18n.t.tasks.delete}</button>
           {/if}
         </li>
       {/each}

@@ -10,7 +10,7 @@ mod smtp;
 
 use crate::{
     error::Result,
-    items::{Item, NewItem},
+    items::{EventDraft, Item, NewItem},
     secrets, settings,
 };
 use async_trait::async_trait;
@@ -48,6 +48,12 @@ pub trait Connector: Send + Sync {
     /// `meta.actions`; the others refuse.
     async fn reply(&self, _item: &Item, _text: &str) -> std::result::Result<(), String> {
         Err("This source cannot do that.".into())
+    }
+
+    /// For a calendar that cannot be written to from here but has a web page that creates an
+    /// event: the address of that page, filled in with `event`.
+    fn event_page(&self, _event: &EventDraft) -> Option<String> {
+        None
     }
 }
 
