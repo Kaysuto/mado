@@ -24,7 +24,17 @@ export const en = {
     alert: 'Alert',
     article: 'Article',
   },
+  labels: {
+    action: 'Action needed',
+    read: 'To read',
+    finance: 'Bank and invoices',
+    notification: 'Notifications',
+    promo: 'Promotions',
+  },
   inbox: {
+    sort: 'Sort the mail',
+    sorting: 'Sorting the mail…',
+    stop: 'Stop',
     search: 'Search everything',
     toHandle: 'To handle',
     done: 'Done',

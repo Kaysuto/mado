@@ -17,6 +17,7 @@ function event(title: string, start: Date, end: Date | null, allDay = false): It
     occurredAt: start.getTime() / 1000,
     endsAt: end ? end.getTime() / 1000 : null,
     meta: { allDay },
+    label: null,
   }
 }
 

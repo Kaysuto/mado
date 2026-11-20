@@ -18,6 +18,10 @@ export type Kind =
 /** Where the user stands with an item. Kept across syncs. */
 export type Triage = 'inbox' | 'done' | 'later'
 
+/** What a mail is about, as the fast model sorted it. Kept across syncs. */
+export const LABELS = ['action', 'read', 'finance', 'notification', 'promo'] as const
+export type Label = (typeof LABELS)[number]
+
 export interface Item {
   id: number
   source: string
@@ -34,6 +38,8 @@ export interface Item {
   occurredAt: number
   endsAt: number | null
   meta: Record<string, unknown>
+  /** Null until the mail has been sorted. */
+  label: Label | null
 }
 
 export interface ItemQuery {
@@ -171,6 +177,12 @@ export function chat(
   channel.onmessage = onDelta
   return invoke<Reply>('chat', { requestId, lang, messages, onDelta: channel })
 }
+
+/**
+ * Sorts the mail waiting without a label, with the fast model. Resolves to how many mails
+ * got one. `requestId` stops it through `cancel`.
+ */
+export const sortMail = (requestId: string) => invoke<number>('sort_mail', { requestId })
 
 /** Writes today's briefing with the strong model. `done` is what was already ticked off today. */
 export const briefing = (requestId: string, lang: 'en' | 'fr', done: string[]) =>

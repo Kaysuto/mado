@@ -3,8 +3,11 @@
   import {
     INBOX_KINDS,
     ITEM_ACTIONS,
+    LABELS,
     type ItemAction,
+    type Label,
     actOnItem,
+    cancel,
     type Item,
     type Triage,
     listItems,
@@ -13,6 +16,7 @@
     onItemsChanged,
     openPage,
     setTriage,
+    sortMail,
   } from '../lib/api'
   import { i18n } from '../lib/i18n.svelte'
   import { relativeTime } from '../lib/time'
@@ -43,6 +47,39 @@
     }
   }
   let now = $state(Date.now() / 1000)
+
+  let label = $state<Label | null>(null)
+  let sorting = $state('') // id of the sorting in progress, to stop it
+  let stopped = false
+  const unsorted = $derived(items.filter(item => item.kind === 'mail' && !item.label).length)
+  /** The labels in use, each with how many items carry it. */
+  const counts = $derived(
+    LABELS.map(name => ({ name, count: items.filter(item => item.label === name).length })).filter(
+      entry => entry.count > 0,
+    ),
+  )
+  // A label nothing carries any more cannot stay selected: its chip is gone.
+  const shown = $derived(
+    label && counts.some(entry => entry.name === label) ? items.filter(item => item.label === label) : items,
+  )
+
+  async function sort() {
+    sorting = crypto.randomUUID()
+    stopped = false
+    try {
+      await sortMail(sorting)
+      actionError = ''
+    } catch (cause) {
+      if (!stopped) actionError = String(cause)
+    } finally {
+      sorting = ''
+    }
+  }
+
+  function stopSorting() {
+    stopped = true
+    void cancel(sorting)
+  }
 
   let latest = 0
   async function load() {
@@ -92,6 +129,22 @@
       {value === 'inbox' ? i18n.t.inbox.toHandle : i18n.t.inbox.done}
     </button>
   {/each}
+  {#each counts as entry (entry.name)}
+    <button
+      class="chip"
+      aria-pressed={label === entry.name}
+      onclick={() => (label = label === entry.name ? null : entry.name)}
+    >
+      {i18n.t.labels[entry.name]}
+      {entry.count}
+    </button>
+  {/each}
+  {#if sorting}
+    <span class="meta" role="status">{i18n.t.inbox.sorting}</span>
+    <button class="btn" onclick={stopSorting}>{i18n.t.inbox.stop}</button>
+  {:else if triage === 'inbox' && unsorted > 0}
+    <button class="btn sort" onclick={sort}>{i18n.t.inbox.sort} ({unsorted})</button>
+  {/if}
 </div>
 
 {#if actionError}
@@ -113,11 +166,14 @@
   </div>
 {:else}
   <ul>
-    {#each items as item (item.id)}
+    {#each shown as item (item.id)}
       <li>
         <div class="text">
           <div class="top">
             <span class="kind">{i18n.t.kinds[item.kind]}</span>
+            {#if item.label}
+              <span class="label" class:action={item.label === 'action'}>{i18n.t.labels[item.label]}</span>
+            {/if}
             <span class="meta">
               {[item.author, relativeTime(item.occurredAt, now, i18n.locale)].filter(Boolean).join(' · ')}
             </span>
@@ -160,8 +216,15 @@
   }
   .filters {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 6px;
+    min-height: 34px;
     margin-bottom: 12px;
+  }
+  .filters .meta,
+  .sort {
+    margin-left: auto;
   }
   ul {
     margin: 0;
@@ -192,6 +255,17 @@
     color: var(--accent);
     font-size: 11px;
     font-weight: 600;
+  }
+  .label {
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .label.action {
+    border-color: var(--danger);
+    color: var(--danger);
   }
   .meta {
     color: var(--muted);

@@ -33,7 +33,20 @@ pub enum Triage {
     Later,
 }
 
-// Both enums are stored as the same lowercase text the interface receives.
+/// What a mail is about, as a model sorted it. Local only: a sync never changes it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Label {
+    /// Needs an answer or an action from the user.
+    Action,
+    /// Worth reading, nothing to do.
+    Read,
+    Finance,
+    Notification,
+    Promo,
+}
+
+// These enums are stored as the same lowercase text the interface receives.
 macro_rules! stored_as_text {
     ($type:ty) => {
         impl rusqlite::ToSql for $type {
@@ -55,6 +68,7 @@ macro_rules! stored_as_text {
 }
 stored_as_text!(Kind);
 stored_as_text!(Triage);
+stored_as_text!(Label);
 
 /// An item as a connector produces it.
 #[derive(Debug, Clone, PartialEq)]
@@ -93,6 +107,8 @@ pub struct Item {
     pub occurred_at: i64,
     pub ends_at: Option<i64>,
     pub meta: serde_json::Value,
+    /// Set by the sorting of mail; `None` until then.
+    pub label: Option<Label>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -205,7 +221,7 @@ pub fn delete_local(conn: &Connection, id: i64) -> Result<()> {
 pub fn get(conn: &Connection, id: i64) -> Result<Option<Item>> {
     let mut statement = conn.prepare(
         "SELECT id, source, external_id, kind, title, body, author, url,
-                state, triage, occurred_at, ends_at, meta
+                state, triage, occurred_at, ends_at, meta, label
          FROM items WHERE id = ?1",
     )?;
     let mut rows = statement.query_map([id], read_item)?;
@@ -230,6 +246,14 @@ pub fn set_triage(conn: &Connection, id: i64, triage: Triage) -> Result<()> {
     Ok(())
 }
 
+pub fn set_label(conn: &Connection, id: i64, label: Label) -> Result<()> {
+    conn.execute(
+        "UPDATE items SET label = ?2 WHERE id = ?1",
+        params![id, label],
+    )?;
+    Ok(())
+}
+
 /// The lowercase text an enum is stored as.
 fn stored_text(value: impl Serialize) -> Result<Value> {
     let text = serde_json::to_value(value)?;
@@ -239,7 +263,7 @@ fn stored_text(value: impl Serialize) -> Result<Value> {
 pub fn list(conn: &Connection, query: &Query) -> Result<Vec<Item>> {
     let mut sql = String::from(
         "SELECT items.id, source, external_id, kind, items.title, items.body, items.author, url,
-                state, triage, occurred_at, ends_at, meta
+                state, triage, occurred_at, ends_at, meta, label
          FROM items",
     );
     let mut values: Vec<Value> = Vec::new();
@@ -306,6 +330,7 @@ fn read_item(row: &Row<'_>) -> rusqlite::Result<Item> {
         occurred_at: row.get(10)?,
         ends_at: row.get(11)?,
         meta: serde_json::from_str(&meta).unwrap_or_default(),
+        label: row.get(13)?,
     })
 }
 
@@ -376,6 +401,23 @@ mod tests {
         )
         .unwrap();
         assert_eq!(titles(&conn, Query::default()), ["Third", "Second, edited"]);
+    }
+
+    #[test]
+    fn replace_keeps_the_label_of_a_mail() {
+        let mut conn = open_in_memory();
+        replace_source(&mut conn, "a", &[item("1", Kind::Mail, "Mail", 10)]).unwrap();
+        let mail = list(&conn, &Query::default()).unwrap().pop().unwrap();
+        assert_eq!(mail.label, None);
+        set_label(&conn, mail.id, Label::Finance).unwrap();
+
+        replace_source(&mut conn, "a", &[item("1", Kind::Mail, "Mail, edited", 10)]).unwrap();
+
+        let mail = get(&conn, mail.id).unwrap().unwrap();
+        assert_eq!(
+            (mail.title.as_str(), mail.label),
+            ("Mail, edited", Some(Label::Finance))
+        );
     }
 
     #[test]

@@ -184,7 +184,6 @@ fn unreachable(error: reqwest::Error) -> String {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tier {
     /// Sorting, classifying, estimating. Its first user is the sorting of mail.
-    #[cfg_attr(not(test), allow(dead_code))]
     Fast,
     /// Writing: briefings, reviews, chat, drafts.
     Strong,
