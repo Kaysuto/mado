@@ -1,9 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import {
+    type AgentSession,
     type Item,
     type Repository,
     getSetting,
+    listAgentSessions,
     listItems,
     listRepositories,
     onItemsChanged,
@@ -23,7 +25,10 @@
   let terminal = $state('')
   let managing = $state(false)
   let error = $state('')
-  const now = Date.now() / 1000
+  let sessions = $state<AgentSession[]>([])
+  let now = $state(Date.now() / 1000)
+
+  const ENGINES = { claude_code: 'Claude Code', codex: 'Codex' }
 
   async function guard(action: () => Promise<void>) {
     try {
@@ -37,6 +42,12 @@
   const load = () => guard(async () => void (repositories = await listRepositories()))
   const loadItems = () =>
     guard(async () => void (items = await listItems({ kinds: ['merge_request', 'ticket', 'alert'] })))
+
+  // A failure here is not shown: it would come back at every reading.
+  async function loadSessions() {
+    sessions = await listAgentSessions().catch(() => sessions)
+    now = Date.now() / 1000
+  }
 
   /** Keeps the chosen folders, then looks into them again. */
   const keep = (next: string[]) =>
@@ -60,8 +71,14 @@
     })
     void load()
     void loadItems()
+    void loadSessions()
+    // Agents work while this screen is open: their sessions are read again every few seconds.
+    const reading = setInterval(loadSessions, 15_000)
     const listening = onItemsChanged(loadItems)
-    return () => void listening.then(stop => stop())
+    return () => {
+      clearInterval(reading)
+      void listening.then(stop => stop())
+    }
   })
 </script>
 
@@ -111,6 +128,27 @@
 
 {#if error}
   <p class="error" role="alert">{error}</p>
+{/if}
+
+{#if sessions.length > 0}
+  <h2>{i18n.t.code.agents}</h2>
+  <ul>
+    {#each sessions as session (session.engine + session.id)}
+      <li>
+        <div class="row">
+          <span class="state {session.state}">{i18n.t.code.states[session.state]}</span>
+          <span class="title name">{session.title}</span>
+          <span class="hint">{session.project}</span>
+          <span class="hint">{ENGINES[session.engine]}</span>
+          <span class="hint">{relativeTime(session.updatedAt, now, i18n.locale)}</span>
+        </div>
+        {#if session.tool || session.last}
+          <p class="hint last">{session.tool ? `${i18n.t.code.tool} ${session.tool}` : session.last}</p>
+        {/if}
+      </li>
+    {/each}
+  </ul>
+  <h2>{i18n.t.code.repositories}</h2>
 {/if}
 
 {#if repositories?.length === 0}
@@ -177,6 +215,30 @@
     margin: 0;
     font-size: 24px;
     font-weight: 600;
+  }
+  h2 {
+    margin: 24px 0 4px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .state {
+    flex: none;
+    min-width: 72px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .state.working {
+    color: var(--accent);
+  }
+  .state.idle {
+    color: var(--ok);
+  }
+  .last {
+    margin: 4px 0 0 84px;
   }
   section {
     margin-bottom: 16px;

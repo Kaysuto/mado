@@ -1,3 +1,4 @@
+mod agents;
 mod assistant;
 mod chats;
 mod code;
@@ -191,6 +192,19 @@ async fn list_repositories(app: AppHandle) -> Result<Vec<code::Repository>> {
         repositories.extend(code::samples());
     }
     Ok(repositories)
+}
+
+/// The coding-agent sessions of the last hours on this machine, with the sample ones when
+/// sample data is shown.
+// Not on the main thread: session files are read from disk.
+#[tauri::command(async)]
+fn list_agent_sessions(app: AppHandle) -> Result<Vec<agents::Session>> {
+    let now = items::now();
+    let mut sessions = agents::list(&app.path().home_dir()?, now);
+    if settings::flag(&app.state::<State>().db(), settings::DEMO)? {
+        sessions.extend(agents::samples(now));
+    }
+    Ok(sessions)
 }
 
 /// Lets the user pick a folder with the system's own dialog. `None` when they close it.
@@ -635,6 +649,7 @@ pub fn run() {
             focus_total,
             act_on_item,
             list_repositories,
+            list_agent_sessions,
             pick_folder,
             open_repository,
             list_sources,
