@@ -215,8 +215,9 @@ export const en = {
     confirmRemove: 'Confirm removal',
     service: 'Service',
     name: 'Name',
-    token: { github: 'Token (optional)', linear: 'API key', ical: 'Secret iCal address', imap: 'Password or app password', feed: 'Feed address (https://…)' },
+    token: { github: 'Token (optional)', gitlab: 'Access token', linear: 'API key', ical: 'Secret iCal address', imap: 'Password or app password', feed: 'Feed address (https://…)' },
     server: 'Mail server (IMAP)',
+    instance: 'Address of the instance (empty for gitlab.com)',
     port: 'Port',
     smtp: 'Sending server (SMTP, optional)',
     smtpPort: 'Port of the sending server',
@@ -224,6 +225,7 @@ export const en = {
     add: 'Add',
     sync: 'Sync now',
     hints: {
+      gitlab: 'Create a personal access token with the read_api scope, in your GitLab preferences. Leave the address empty for gitlab.com; for an instance of your own, give its https address.',
       feed: 'One feed per source: paste the RSS or Atom address of a blog, a newspaper, a forum or a release page, and name it after the site. Madow keeps its 30 latest articles, to read in the News space.',
       github:
         'Leave the token empty to use the sign-in of the GitHub CLI (gh), if it is installed. Otherwise create a personal access token that can read your repositories and notifications.',
