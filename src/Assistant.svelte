@@ -1,12 +1,27 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte'
-  import { type ChatMessage, cancel, chat, getSetting, openLinks, setSetting } from './lib/api'
+  import {
+    type ChatMessage,
+    type ConversationSummary,
+    cancel,
+    chat,
+    conversation,
+    deleteConversation,
+    getSetting,
+    listConversations,
+    openLinks,
+    saveConversation,
+    setSetting,
+  } from './lib/api'
   import { i18n } from './lib/i18n.svelte'
   import { markdown } from './lib/markdown'
+  import { relativeTime } from './lib/time'
 
   let { onclose }: { onclose: () => void } = $props()
 
+  let id = $state<number | null>(null) // the conversation shown, once it is kept
   let messages = $state<ChatMessage[]>([])
+  let history = $state<ConversationSummary[] | null>(null) // listed in place of the messages
   let draft = $state('')
   let writing = $state('') // id of the answer being written, to stop it
   let partial = $state('') // what has been written of it so far
@@ -16,8 +31,13 @@
   let input = $state<HTMLTextAreaElement>()
 
   onMount(async () => {
-    const saved = await getSetting<ChatMessage[]>('chat')
-    if (Array.isArray(saved)) messages = saved
+    // The app reopens on the conversation it was left on.
+    const current = await getSetting<number>('chat.current')
+    const saved = typeof current === 'number' ? await conversation(current) : null
+    if (saved) {
+      id = current
+      messages = saved
+    }
     input?.focus()
   })
 
@@ -33,6 +53,7 @@
     draft = ''
     error = ''
     stopped = false
+    history = null
     messages = [...messages, { role: 'user', content: text }]
     const requestId = crypto.randomUUID()
     writing = requestId
@@ -47,7 +68,18 @@
     } finally {
       writing = ''
       partial = ''
-      void setSetting('chat', messages)
+      void guard(async () => {
+        id = await saveConversation(id, messages)
+        await setSetting('chat.current', id)
+      })
+    }
+  }
+
+  async function guard(action: () => Promise<void>) {
+    try {
+      await action()
+    } catch (cause) {
+      error = String(cause)
     }
   }
 
@@ -56,12 +88,46 @@
     void cancel(writing)
   }
 
+  /** Starts a new conversation. The one that was shown stays in the history. */
   function reset() {
+    id = null
     messages = []
+    history = null
     error = ''
-    void setSetting('chat', [])
+    void setSetting('chat.current', null)
     input?.focus()
   }
+
+  const browse = () =>
+    guard(async () => {
+      history = history ? null : await listConversations()
+    })
+
+  const open = (summary: ConversationSummary) =>
+    guard(async () => {
+      const saved = await conversation(summary.id)
+      if (!saved) {
+        history = await listConversations()
+        return
+      }
+      id = summary.id
+      messages = saved
+      history = null
+      error = ''
+      await setSetting('chat.current', id)
+      input?.focus()
+    })
+
+  const remove = (summary: ConversationSummary) =>
+    guard(async () => {
+      await deleteConversation(summary.id)
+      history = await listConversations()
+      if (summary.id === id) {
+        id = null
+        messages = []
+        await setSetting('chat.current', null)
+      }
+    })
 
   function onkeydown(event: KeyboardEvent) {
     // Enter sends; Shift+Enter makes a new line. Never while a character is being composed.
@@ -75,6 +141,9 @@
 <aside aria-label={i18n.t.assistant.title}>
   <div class="head">
     <h2>{i18n.t.assistant.title}</h2>
+    <button class="btn" aria-pressed={history !== null} disabled={Boolean(writing)} onclick={browse}>
+      {i18n.t.assistant.history}
+    </button>
     <button class="btn" disabled={Boolean(writing) || messages.length === 0} onclick={reset}>
       {i18n.t.assistant.fresh}
     </button>
@@ -83,18 +152,41 @@
 
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
   <div class="messages" bind:this={list} onclick={openLinks} aria-live="polite">
-    {#if messages.length === 0 && !writing}
-      <p class="hint">{i18n.t.assistant.empty}</p>
+    {#if history}
+      {#if history.length === 0}
+        <p class="hint">{i18n.t.assistant.noHistory}</p>
+      {/if}
+      <ul>
+        {#each history as summary (summary.id)}
+          <li>
+            <button class="past" aria-current={summary.id === id ? 'true' : undefined} onclick={() => open(summary)}>
+              <span class="title">{summary.title}</span>
+              <span class="hint">{relativeTime(summary.updatedAt, Date.now() / 1000, i18n.locale)}</span>
+            </button>
+            <button
+              class="btn"
+              aria-label="{i18n.t.assistant.delete} : {summary.title}"
+              onclick={() => remove(summary)}
+            >
+              {i18n.t.assistant.delete}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      {#if messages.length === 0 && !writing}
+        <p class="hint">{i18n.t.assistant.empty}</p>
+      {/if}
+      {#each messages as message, index (index)}
+        <div class="message {message.role}">
+          {#if message.role === 'user'}
+            {message.content}
+          {:else}
+            {@html markdown(message.content)}
+          {/if}
+        </div>
+      {/each}
     {/if}
-    {#each messages as message, index (index)}
-      <div class="message {message.role}">
-        {#if message.role === 'user'}
-          {message.content}
-        {:else}
-          {@html markdown(message.content)}
-        {/if}
-      </div>
-    {/each}
     {#if writing}
       <div class="message assistant">
         {#if partial}
@@ -161,6 +253,44 @@
     min-height: 0;
     padding: 16px;
     overflow-y: auto;
+  }
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .past {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    text-align: left;
+  }
+  .past:hover {
+    background: var(--hover);
+  }
+  .past[aria-current] {
+    background: var(--accent-soft);
+  }
+  .title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .btn[aria-pressed='true'] {
+    border-color: var(--accent);
+    color: var(--accent);
   }
   .message {
     max-width: 92%;

@@ -61,7 +61,7 @@ impl Lang {
 }
 
 /// One line of data: no line break, never longer than `limit` characters.
-fn line(text: &str, limit: usize) -> String {
+pub(crate) fn line(text: &str, limit: usize) -> String {
     text.split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")

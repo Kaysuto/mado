@@ -1,4 +1,5 @@
 mod assistant;
+mod chats;
 mod connectors;
 mod db;
 mod error;
@@ -404,6 +405,33 @@ async fn chat(
     Ok(cancellable(&state, request_id, ANSWER_LIMIT, call).await?)
 }
 
+/// The conversations kept with the assistant, the one touched last first.
+#[tauri::command]
+fn list_conversations(state: tauri::State<'_, State>) -> Result<Vec<chats::Summary>> {
+    chats::list(&state.db())
+}
+
+/// The messages of a conversation. `None` when it no longer exists.
+#[tauri::command]
+fn conversation(state: tauri::State<'_, State>, id: i64) -> Result<Option<Vec<llm::Message>>> {
+    chats::messages(&state.db(), id)
+}
+
+/// Keeps a conversation as it stands and returns its id; `id` is left out for a new one.
+#[tauri::command]
+fn save_conversation(
+    state: tauri::State<'_, State>,
+    id: Option<i64>,
+    messages: Vec<llm::Message>,
+) -> Result<i64> {
+    chats::save(&state.db(), id, &messages)
+}
+
+#[tauri::command]
+fn delete_conversation(state: tauri::State<'_, State>, id: i64) -> Result<()> {
+    chats::delete(&state.db(), id)
+}
+
 /// Drafts the user's answer to a mail with the strong model, handing it over piece by piece
 /// on `on_delta`. `intent` is what the user wants to say; it may be empty. The draft is only
 /// text for the user to edit: nothing is sent. Cancellable like `ask`.
@@ -580,6 +608,10 @@ pub fn run() {
             review_numbers,
             review,
             chat,
+            list_conversations,
+            conversation,
+            save_conversation,
+            delete_conversation,
             sort_mail,
             draft_reply,
             send_reply,

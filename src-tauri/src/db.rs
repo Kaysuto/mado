@@ -66,6 +66,24 @@ const MIGRATIONS: &[&str] = &[
     );
     CREATE INDEX focus_by_end ON focus (ended_at);
     ",
+    // 4: conversations with the assistant. `messages` is a JSON array of {role, content}.
+    // The single conversation that used to live in the `chat` setting becomes the first one,
+    // and stays the one that is open.
+    "
+    CREATE TABLE conversations (
+        id INTEGER PRIMARY KEY,
+        title TEXT NOT NULL,
+        messages TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX conversations_by_time ON conversations (updated_at DESC);
+
+    INSERT INTO conversations (title, messages, updated_at)
+    SELECT substr(json_extract(value, '$[0].content'), 1, 80), value, strftime('%s', 'now')
+    FROM settings WHERE key = 'chat' AND json_array_length(value) > 0;
+    INSERT INTO settings (key, value) SELECT 'chat.current', id FROM conversations;
+    DELETE FROM settings WHERE key = 'chat';
+    ",
 ];
 
 pub fn open(path: &Path) -> rusqlite::Result<Connection> {
@@ -105,5 +123,54 @@ mod tests {
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
         assert_eq!(version as usize, MIGRATIONS.len());
+    }
+
+    #[test]
+    fn the_conversation_kept_as_a_setting_becomes_the_first_of_the_history() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(&MIGRATIONS[..3].concat()).unwrap();
+        conn.pragma_update(None, "user_version", 3).unwrap();
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('chat', ?1)",
+            [r#"[{"role":"user","content":"When am I free?"},{"role":"assistant","content":"At 3."}]"#],
+        )
+        .unwrap();
+
+        migrate(&conn).unwrap();
+        let (id, title): (i64, String) = conn
+            .query_row("SELECT id, title FROM conversations", [], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })
+            .unwrap();
+        assert_eq!(title, "When am I free?");
+        let settings: Vec<(String, String)> = conn
+            .prepare("SELECT key, value FROM settings")
+            .unwrap()
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        assert_eq!(settings, [("chat.current".to_owned(), id.to_string())]);
+    }
+
+    #[test]
+    fn an_empty_conversation_is_not_carried_over() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(&MIGRATIONS[..3].concat()).unwrap();
+        conn.pragma_update(None, "user_version", 3).unwrap();
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('chat', '[]')",
+            [],
+        )
+        .unwrap();
+        migrate(&conn).unwrap();
+        let rows: i64 = conn
+            .query_row(
+                "SELECT (SELECT COUNT(*) FROM conversations) + (SELECT COUNT(*) FROM settings)",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(rows, 0);
     }
 }
